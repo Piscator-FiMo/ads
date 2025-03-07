@@ -25,26 +25,49 @@ import matplotlib.pyplot as plt
 
 # Generate Realistic Synthetic Data
 def generate_synthetic_data(num_samples=1000):
+    start_date = "2024-01-01"
     data = {
-        "keyword": [f"Keyword_{i}" for i in range(num_samples)],
-        "competitiveness": np.random.uniform(0, 1, num_samples),
-        "difficulty_score": np.random.uniform(0, 1, num_samples),
-        "organic_rank": np.random.uniform(1, 10, num_samples),
-        "organic_clicks": np.random.randint(50, 5000, num_samples),
-        "organic_ctr": np.random.uniform(0.01, 0.3, num_samples),
-        "paid_clicks": np.random.randint(10, 3000, num_samples),
-        "paid_ctr": np.random.uniform(0.01, 0.25, num_samples),
-        "ad_spend": np.random.uniform(10, 10000, num_samples),
-        "ad_conversions": np.random.uniform(0, 500, num_samples),
-        "ad_roas": np.random.uniform(0.5, 5, num_samples),
-        "conversion_rate": np.random.uniform(0.01, 0.3, num_samples),
-        "cost_per_click": np.random.uniform(0.1, 10, num_samples),
-        "cost_per_acquisition": np.random.uniform(5, 500, num_samples),
-        "previous_recommendation": np.random.choice([0, 1], size=num_samples),
-        "impression_share": np.random.uniform(0.1, 1.0, num_samples),
-        "conversion_value": np.random.uniform(0, 10000, num_samples)
+        "keyword": [f"Keyword_{i}" for i in range(num_samples)],                         # Suchanfragen zum bestimmten Keyword
+        "timestamp": pd.date_range(start=start_date, periods=num_samples, freq="D"),     # Zeitstempel, täglich
+        "impressions_rel": rand.randint(40, 100, num_samples),                           # Suchanfragen nach Keyword, relative Werte von 0 bis 100
+        "competitiveness": rand.uniform(0, 1, num_samples),                              # Wettbewerbsintensität, 0 = wenig Konkurrenz, 1 = viel Konkurrenz, 
+        "difficulty_score": rand.uniform(0, 1, num_samples),                             # Schwierigkeitsgrad für SEO-Rankings (0 = einfach, 1 = sehr schwer).
+        "organic_rank": rand.randint(1, 11, num_samples),                                # Position in der organischen Suche (1 = ganz oben, 10 = unterste Position auf der ersten Seite).
+        "organic_clicks": rand.randint(50, 5000, num_samples),                           # Anzahl der Klicks aus organischer Suche.
+        "organic_ctr": rand.uniform(0.01, 0.3, num_samples),                             # Click-Through-Rate (CTR) der organischen Ergebnisse (Anteil der Nutzer, die auf das organische Ergebnis klicken).
+        "paid_clicks": rand.randint(10, 3000, num_samples),                              # Anzahl der Klicks auf die bezahlte Anzeige.
+        "paid_ctr": rand.uniform(0.01, 0.25, num_samples),                               # Click-Through-Rate der Anzeige (Wie oft die Anzeige geklickt wird, wenn sie erscheint).
+        "ad_spend": rand.uniform(10, 10000, num_samples),                                # Werbeausgaben für das Keyword (in CHF).
+        "ad_conversions": rand.uniform(0, 500, num_samples),                             # Anzahl der Conversions durch bezahlte Anzeigen (z. B. Käufe, Anmeldungen).
+        "ad_roas": rand.uniform(0.5, 5, num_samples),                                    # Return on Ad Spend = conversion_value / ad_spend (Wie profitabel die Werbung ist).
+        "conversion_rate": rand.uniform(0.01, 0.3, num_samples),                         # Anteil der Besucher, die eine gewünschte Aktion ausführen (z. B. Kauf).
+        "cost_per_click": rand.uniform(0.1, 10, num_samples),                            # Kosten pro Klick (CPC) = ad_spend / paid_clicks.
+        "cost_per_acquisition": rand.uniform(5, 500, num_samples),                       # Kosten pro Neukunde (CPA) = ad_spend / ad_conversions.
+        "previous_recommendation": rand.choice([0, 1], size=num_samples),                # Wurde das Keyword zuvor für Werbung empfohlen? (0 = Nein, 1 = Ja).
+        "impression_share": rand.uniform(0.1, 1.0, num_samples),                         # Marktanteil der Anzeigen (0 = kaum sichtbar, 1 = dominiert den Markt).
+        "conversion_value": rand.uniform(0, 10000, num_samples)                          # Gesamtwert der erzielten Conversions in Währungseinheiten.
     }
-    return pd.DataFrame(data)
+    df = pd.DataFrame(data)
+
+    #Abhängigkeit zwischen den Variablen einfügen, allerdings sollen die Daten weiterhin variieren, deshalb bleibt ein random-Teil enthalten.
+    df["competitiveness"] = df["impressions_rel"] / 100 * rand.uniform(0.5,0.99)                         # Annahme: wenn oft nach einem Begriff gesucht wird, wird auch mehr Werbung geschaltet
+    df["difficulty_score"] = df["competitiveness"] * rand.uniform(0.8,0.99)                              # Annahme: je höher die Konkurrenz ist, desto schwerer ist es die eigene Seite hoch im Ranking zu platzieren
+    #organic
+    df["organic_rank"] = np.clip((df["difficulty_score"] * rand.randint(1,11)).astype(int),1,10)         # Annahme: der Rang der eigenen Seite ist vom difficulty Score abhängig
+    df["organic_clicks"] = df["organic_clicks"] * df["impressions_rel"] / 100 * rand.uniform(0.2, 0.5)   # Annahme: Anzahl Klicks ist abhängig von der Anzahl der Suchen    
+    df["organic_ctr"] = df["organic_clicks"] / df["impressions_rel"]                                     # Annahme: CTR ist abhängig von der Anzahl der Suchen und den Anzahl Klicks
+    #paid
+    df["paid_clicks"] = df["paid_clicks"] * df["impressions_rel"] / 100 * rand.uniform(0.2, 0.5)         # Annahme: Anzahl Klicks ist abhängig von der Anzahl der Suchen    
+    df["paid_ctr"] = df["paid_clicks"] / df["impressions_rel"]                                           # Annahme: CTR ist abhängig von der Anzahl der Suchen und den Anzahl Klicks
+    df["ad_conversions"] = np.clip(df["ad_spend"] / 10000, 0.05, 1) * rand.uniform(0,500)                # Annahme: Die Conversion ist vom bezahlten Preis abhängig, np.clip = Wert muss zwischen 0.05 und 1 liegen
+    df["conversion_value"] = df["ad_conversions"] * rand.uniform(10,150)                                 # Annahme: Pro Conversion wird ein Betrag zwischen 10 und 150 Franken ausgegeben. 
+    #Berechnete KPI
+    df["ad_roas"] = df["conversion_value"] / df["ad_spend"]                                              # wird mit Formel berechnet.
+    df["cost_per_click"] = df["ad_spend"] / df["paid_clicks"]                                            # wird mit Formel berechnet.
+    df["cost_per_acquisition"] = df["ad_spend"] / df["ad_conversions"]                                   # wird mit Formel berechnet.
+    df["previous_recommendation"] = (data["ad_spend"] > 5000).astype(int)                                # Falls vorher viel ausgegeben wurde, empfehlen wir es erneut
+    df["impression_share"] = np.clip(df["ad_spend"] / 10000, 0.05, 1) * rand.uniform(0.2,0.7)            # Annahme: Wenn eine Anzeige ein hohes Budget hat, wird die Anzeige auch oft ausgegeben
+    return df
 
 # Load synthetic dataset
 dataset = generate_synthetic_data(1000)
