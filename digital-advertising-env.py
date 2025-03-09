@@ -1,4 +1,4 @@
-!pip install torch==2.5.0 torchrl
+#!pip install torch==2.5.0 torchrl
 
 import torch
 import torch.nn as nn
@@ -24,30 +24,28 @@ from torch.optim import Adam
 import matplotlib.pyplot as plt
 
 # Generate Realistic Synthetic Data
-def generate_synthetic_data(num_samples=1000):
-    start_date = "2024-01-01"
-    data = {
-        "keyword": [f"Keyword_{i}" for i in range(num_samples)],                         # Suchanfragen zum bestimmten Keyword
-        "timestamp": pd.date_range(start=start_date, periods=num_samples, freq="D"),     # Zeitstempel, täglich
-        "impressions_rel": rand.randint(40, 100, num_samples),                           # Suchanfragen nach Keyword, relative Werte von 0 bis 100
-        "competitiveness": rand.uniform(0, 1, num_samples),                              # Wettbewerbsintensität, 0 = wenig Konkurrenz, 1 = viel Konkurrenz, 
-        "difficulty_score": rand.uniform(0, 1, num_samples),                             # Schwierigkeitsgrad für SEO-Rankings (0 = einfach, 1 = sehr schwer).
-        "organic_rank": rand.randint(1, 11, num_samples),                                # Position in der organischen Suche (1 = ganz oben, 10 = unterste Position auf der ersten Seite).
-        "organic_clicks": rand.randint(50, 5000, num_samples),                           # Anzahl der Klicks aus organischer Suche.
-        "organic_ctr": rand.uniform(0.01, 0.3, num_samples),                             # Click-Through-Rate (CTR) der organischen Ergebnisse (Anteil der Nutzer, die auf das organische Ergebnis klicken).
-        "paid_clicks": rand.randint(10, 3000, num_samples),                              # Anzahl der Klicks auf die bezahlte Anzeige.
-        "paid_ctr": rand.uniform(0.01, 0.25, num_samples),                               # Click-Through-Rate der Anzeige (Wie oft die Anzeige geklickt wird, wenn sie erscheint).
-        "ad_spend": rand.uniform(10, 10000, num_samples),                                # Werbeausgaben für das Keyword (in CHF).
-        "ad_conversions": rand.uniform(0, 500, num_samples),                             # Anzahl der Conversions durch bezahlte Anzeigen (z. B. Käufe, Anmeldungen).
-        "ad_roas": rand.uniform(0.5, 5, num_samples),                                    # Return on Ad Spend = conversion_value / ad_spend (Wie profitabel die Werbung ist).
-        "conversion_rate": rand.uniform(0.01, 0.3, num_samples),                         # Anteil der Besucher, die eine gewünschte Aktion ausführen (z. B. Kauf).
-        "cost_per_click": rand.uniform(0.1, 10, num_samples),                            # Kosten pro Klick (CPC) = ad_spend / paid_clicks.
-        "cost_per_acquisition": rand.uniform(5, 500, num_samples),                       # Kosten pro Neukunde (CPA) = ad_spend / ad_conversions.
-        "previous_recommendation": rand.choice([0, 1], size=num_samples),                # Wurde das Keyword zuvor für Werbung empfohlen? (0 = Nein, 1 = Ja).
-        "impression_share": rand.uniform(0.1, 1.0, num_samples),                         # Marktanteil der Anzeigen (0 = kaum sichtbar, 1 = dominiert den Markt).
-        "conversion_value": rand.uniform(0, 10000, num_samples)                          # Gesamtwert der erzielten Conversions in Währungseinheiten.
-    }
-    df = pd.DataFrame(data)
+def add_generated_synthetic_data(preprocessed_data: pd.DataFrame) -> pd.DataFrame:
+    df: pd.DataFrame = preprocessed_data.copy()
+
+    df["timestamp"] = df["Day"].apply(lambda day: pd.to_datetime(day, format="%Y-%m-%d"))               # Zeitstempel, täglich
+    df["keyword"] = df["keyword"]                                                                       # Suchanfragen zum bestimmten Keyword
+    df["impressions_rel"] = df["freq"]                                                                  # Suchanfragen nach Keyword, relative Werte von 0 bis 100
+    df["competitiveness"] = df.apply(lambda _: rand.uniform(0, 1), axis=1)                              # Wettbewerbsintensität, 0 = wenig Konkurrenz, 1 = viel Konkurrenz, 
+    df["difficulty_score"] = df.apply(lambda _: rand.uniform(0, 1), axis=1)                             # Schwierigkeitsgrad für SEO-Rankings (0 = einfach, 1 = sehr schwer).
+    df["organic_rank"] = df.apply(lambda _: rand.randint(1, 11), axis=1)                                # Position in der organischen Suche (1 = ganz oben, 10 = unterste Position auf der ersten Seite).
+    df["organic_clicks"] = df.apply(lambda _: rand.randint(50, 5000), axis=1)                           # Anzahl der Klicks aus organischer Suche.
+    df["organic_ctr"] = df.apply(lambda _: rand.uniform(0.01, 0.3), axis=1)                             # Click-Through-Rate (CTR) der organischen Ergebnisse (Anteil der Nutzer, die auf das organische Ergebnis klicken).
+    df["paid_clicks"] = df.apply(lambda _: rand.randint(10, 3000), axis=1)                              # Anzahl der Klicks auf die bezahlte Anzeige.
+    df["paid_ctr"] = df.apply(lambda _: rand.uniform(0.01, 0.25), axis=1)                               # Click-Through-Rate der Anzeige (Wie oft die Anzeige geklickt wird, wenn sie erscheint).
+    df["ad_spend"] = df.apply(lambda _: rand.uniform(10, 10000), axis=1)                                # Werbeausgaben für das Keyword (in CHF).
+    df["ad_conversions"] = df.apply(lambda _: rand.uniform(0, 500), axis=1)                             # Anzahl der Conversions durch bezahlte Anzeigen (z. B. Käufe, Anmeldungen).
+    df["ad_roas"] = df.apply(lambda _: rand.uniform(0.5, 5), axis=1)                                    # Return on Ad Spend = conversion_value / ad_spend (Wie profitabel die Werbung ist).
+    df["conversion_rate"] = df.apply(lambda _: rand.uniform(0.01, 0.3), axis=1)                         # Anteil der Besucher, die eine gewünschte Aktion ausführen (z. B. Kauf).
+    df["cost_per_click"] = df.apply(lambda _: rand.uniform(0.1, 10), axis=1)                            # Kosten pro Klick (CPC) = ad_spend / paid_clicks.
+    df["cost_per_acquisition"] = df.apply(lambda _: rand.uniform(5, 500), axis=1)                       # Kosten pro Neukunde (CPA) = ad_spend / ad_conversions.
+    df["previous_recommendation"] = df.apply(lambda _: rand.choice([0, 1]), axis=1)                     # Wurde das Keyword zuvor für Werbung empfohlen? (0 = Nein, 1 = Ja).
+    df["impression_share"] = df.apply(lambda _: rand.uniform(0.1, 1.0), axis=1)                         # Marktanteil der Anzeigen (0 = kaum sichtbar, 1 = dominiert den Markt).
+    df["conversion_value"] = df.apply(lambda _: rand.uniform(0, 10000), axis=1)                         # Gesamtwert der erzielten Conversions in Währungseinheiten.
 
     #Abhängigkeit zwischen den Variablen einfügen, allerdings sollen die Daten weiterhin variieren, deshalb bleibt ein random-Teil enthalten.
     df["competitiveness"] = df["impressions_rel"] / 100 * rand.uniform(0.5,0.99)                         # Annahme: wenn oft nach einem Begriff gesucht wird, wird auch mehr Werbung geschaltet
@@ -65,12 +63,34 @@ def generate_synthetic_data(num_samples=1000):
     df["ad_roas"] = df["conversion_value"] / df["ad_spend"]                                              # wird mit Formel berechnet.
     df["cost_per_click"] = df["ad_spend"] / df["paid_clicks"]                                            # wird mit Formel berechnet.
     df["cost_per_acquisition"] = df["ad_spend"] / df["ad_conversions"]                                   # wird mit Formel berechnet.
-    df["previous_recommendation"] = (data["ad_spend"] > 5000).astype(int)                                # Falls vorher viel ausgegeben wurde, empfehlen wir es erneut
+    df["previous_recommendation"] = (df["ad_spend"] > 5000).astype(int)                                  # Falls vorher viel ausgegeben wurde, empfehlen wir es erneut
     df["impression_share"] = np.clip(df["ad_spend"] / 10000, 0.05, 1) * rand.uniform(0.2,0.7)            # Annahme: Wenn eine Anzeige ein hohes Budget hat, wird die Anzeige auch oft ausgegeben
+
+    # Drop the original columns
+    df = df.drop(columns=["Day", "freq"])
+
+    # Reorder the columns
+    df = df[["timestamp"] + [col for col in df.columns if col != "timestamp"]]
+
+    # Set the timestamp as the index
+    df = df.set_index("timestamp", drop=False)
+
+    # Print some information about the dataset
+    print(df.head())
+    df.info()
+    print(df.describe(include="all"))
+
     return df
 
+
+def load_data() -> pd.DataFrame:
+    return pd.read_csv("data/preprocessed.csv")
+
+
 # Load synthetic dataset
-dataset = generate_synthetic_data(1000)
+dataset = load_data()
+dataset = add_generated_synthetic_data(dataset)
+
 feature_columns = ["competitiveness", "difficulty_score", "organic_rank", "organic_clicks", "organic_ctr", "paid_clicks", "paid_ctr", "ad_spend", "ad_conversions", "ad_roas", "conversion_rate", "cost_per_click"]
 dataset
 
