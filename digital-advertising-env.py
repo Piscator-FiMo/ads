@@ -23,6 +23,9 @@ from torch.optim import Adam
 
 import matplotlib.pyplot as plt
 
+from env.ad_optimization import AdOptimizationEnv
+
+
 # Generate Realistic Synthetic Data
 def add_generated_synthetic_data(preprocessed_data: pd.DataFrame, seed: int | None = None) -> pd.DataFrame:
     df: pd.DataFrame = preprocessed_data.copy()
@@ -94,46 +97,8 @@ dataset = add_generated_synthetic_data(preprocessed_data=load_data(), seed=42)
 feature_columns = ["competitiveness", "difficulty_score", "organic_rank", "organic_clicks", "organic_ctr", "paid_clicks", "paid_ctr", "ad_spend", "ad_conversions", "ad_roas", "conversion_rate", "cost_per_click"]
 dataset
 
-# Define a Custom TorchRL Environment
-class AdOptimizationEnv(EnvBase):
-    def __init__(self, dataset):
-        super().__init__()
-        self.dataset = dataset
-        self.num_features = len(feature_columns)
-        self.action_spec = OneHot(n=2, dtype=torch.int64)
-        self._reset()
-
-    def _reset(self, tensordict=None):
-        sample = self.dataset.sample(1)
-        state = torch.tensor(sample[feature_columns].values, dtype=torch.float32).squeeze()
-        return TensorDict({"observation": state}, batch_size=[])
-
-    def _step(self, tensordict):
-        action = tensordict["action"].argmax(dim=-1).item()
-        #action = tensordict["action"].item()
-        next_sample = self.dataset.sample(1)
-        next_state = torch.tensor(next_sample[feature_columns].values, dtype=torch.float32).squeeze()
-        reward = self._compute_reward(action, next_sample)
-        done = False
-        return TensorDict({"observation": next_state, "reward": torch.tensor(reward), "done": torch.tensor(done)}, batch_size=[])
-
-    def _compute_reward(self, action, sample):
-        cost = sample["ad_spend"].values[0]
-        ctr = sample["paid_ctr"].values[0]
-        if action == 1 and cost > 5000:
-            reward = 1.0
-        elif action == 0 and ctr > 0.15:
-            reward = 1.0
-        else:
-            reward = -1.0
-        return reward
-
-    def _set_seed(self, seed: Optional[int]):
-        rng = torch.manual_seed(seed)
-        self.rng = rng
-
 # Initialize Environment
-env = AdOptimizationEnv(dataset)
+env = AdOptimizationEnv(dataset, feature_columns)
 env = TransformedEnv(env, StepCounter())
 state_dim = env.num_features
 action_dim = env.action_spec.n
