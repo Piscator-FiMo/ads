@@ -4,8 +4,10 @@ from typing import Optional
 import pandas as pd
 import torch
 from tensordict import TensorDict, TensorDictBase
-from torchrl.data import OneHot
-from torchrl.envs import EnvBase
+from torch import Tensor
+from torchrl.data import OneHot, CompositeSpec, TensorSpec, UnboundedContinuousTensorSpec, BoundedContinuous
+from torchrl.data.tensor_specs import Box, ContinuousBox, Unbounded, UnboundedContinuous
+from torchrl.envs import EnvBase, make_composite_from_td
 
 
 # Todo add a budget
@@ -14,20 +16,21 @@ from torchrl.envs import EnvBase
 # done if no more budget
 # Define a Custom TorchRL Environment
 class AdOptimizationEnv(EnvBase):
-    def __init__(self, dataset: pd.DataFrame, feature_columns: list[str]):
+    def __init__(self, dataset: pd.DataFrame, feature_columns: list[str], budget: int):
         super().__init__()
         self.dataset = dataset
         self.feature_columns = feature_columns
         self.num_features = len(feature_columns)
         self.action_spec = OneHot(n=2, dtype=torch.int64)
         self.steps = 0
+        self.budget = budget
         self._reset(TensorDict({"done": torch.tensor(False)}))
 
     def _reset(self, tensordict: TensorDictBase, **kwargs) -> TensorDictBase:
-        sample = self.dataset.iloc(0)
+        sample = self.dataset.sample(1)
         self.steps = 0
-        state = torch.tensor(sample[self.feature_columns].values, dtype=torch.float32).squeeze()
-        return TensorDict({"observation": state}, batch_size=[])
+        state = torch.tensor(sample[self.feature_columns].values, dtype=torch.float32)
+        return TensorDict({"observation": TensorDict({"data": state, "budget": self.budget})}, batch_size=[])
 
     def _step(self, tensordict):
         action = tensordict["action"].argmax(dim=-1).item()
@@ -35,11 +38,15 @@ class AdOptimizationEnv(EnvBase):
         next_sample = self.dataset[self.steps:next_step]
         # todo how are we going through by keyword would require multiple decisions
         self.steps = self.steps + 1
-        next_state = torch.tensor(next_sample[self.feature_columns].values, dtype=torch.float32).squeeze()
+        budget = tensordict["observation"]["budget"]
+        new_budget = budget.item() - (next_sample[-1:]["ad_spend"].item() - next_sample[-1:]["ad_conversions"].item())
+        next_state = torch.tensor(next_sample[self.feature_columns].values, dtype=torch.float32)
         reward = self._compute_reward(action, next_sample[-1:])
         done = False
-        return TensorDict({"observation": next_state, "reward": torch.tensor(reward), "done": torch.tensor(done)},
-                          batch_size=[])
+        return TensorDict(
+            {"observation": TensorDict({"data": next_state, "budget": torch.tensor(new_budget)}), "reward": torch.tensor(reward),
+             "done": torch.tensor(done)},
+            batch_size=[])
 
     def _compute_reward(self, action, sample) -> float:
         # reward prop zu roc
