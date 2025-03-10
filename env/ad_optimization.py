@@ -38,13 +38,14 @@ class AdOptimizationEnv(EnvBase):
         next_sample = self.dataset[self.steps:next_step]
         # todo how are we going through by keyword would require multiple decisions
         self.steps = self.steps + 1
-        budget = tensordict["observation"]["budget"]
-        new_budget = budget.item() - (next_sample[-1:]["ad_spend"].item() - next_sample[-1:]["ad_conversions"].item())
+        budget = tensordict["observation"]["budget"].item()
+        if action == 1:
+            budget -=  (next_sample[-1:]["ad_spend"].item() - next_sample[-1:]["ad_conversions"].item())
         next_state = torch.tensor(next_sample[self.feature_columns].values, dtype=torch.float32)
         reward = self._compute_reward(action, next_sample[-1:])
-        done = False
+        done = budget < 0
         return TensorDict(
-            {"observation": TensorDict({"data": next_state, "budget": torch.tensor(new_budget)}), "reward": torch.tensor(reward),
+            {"observation": TensorDict({"data": next_state, "budget": torch.tensor(budget)}), "reward": torch.tensor(reward),
              "done": torch.tensor(done)},
             batch_size=[])
 

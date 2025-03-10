@@ -130,7 +130,10 @@ if __name__ == "__main__":
     action_dim = env.action_spec.n
     print(env.observation_spec)
     td = env.reset()
-    env.rand_step(td)
+    print(td)
+    td = env.rand_step(td)
+    print(td)
+
 
     # env.action_spec
     #
