@@ -129,6 +129,7 @@ if __name__ == "__main__":
     env = TransformedEnv(env, StepCounter())
     state_dim = env.num_features
     action_dim = env.action_spec.n
+    print(env.observation_spec)
 
     env.action_spec
 

@@ -24,7 +24,7 @@ class AdOptimizationEnv(EnvBase):
         self._reset(TensorDict({"done": torch.tensor(False)}))
 
     def _reset(self, tensordict: TensorDictBase, **kwargs) -> TensorDictBase:
-        sample = self.dataset.sample(1)
+        sample = self.dataset.iloc(0)
         self.steps = 0
         state = torch.tensor(sample[self.feature_columns].values, dtype=torch.float32).squeeze()
         return TensorDict({"observation": state}, batch_size=[])
@@ -50,13 +50,13 @@ class AdOptimizationEnv(EnvBase):
         if action == 1 and ad_roas > 5000:
             # reward a very good action a lot
             reward = ad_roas
-        elif action == 1 and ad_roas < 0:
+        elif action == 1 and ad_roas < 1:
             # if the conversion value < ad spent penalise
             reward = -ad_spent * reward
-        elif action == 0 and ad_roas < 0:
+        elif action == 0 and ad_roas < 1:
             # reward proportionally to saved money
             reward = reward
-        elif action == 0 and ad_roas > 0:
+        elif action == 0 and ad_roas > 1:
             # if not bought but would be profitable penalise
             reward = -reward
         return reward
