@@ -1,4 +1,5 @@
 #!pip install torch==2.5.0 torchrl
+#!pip install torchrl==0.7.2
 
 import torch
 import torch.nn as nn
@@ -62,7 +63,7 @@ def add_generated_synthetic_data(preprocessed_data: pd.DataFrame, seed: int | No
     df["paid_clicks"] = df["paid_clicks"] * df["impressions_rel"] / 100 * rnd.uniform(0.2,0.5)         # Annahme: Anzahl Klicks ist abhängig von der Anzahl der Suchen
     df["paid_ctr"] = df["paid_clicks"] / df["impressions_rel"]                                                   # Annahme: CTR ist abhängig von der Anzahl der Suchen und den Anzahl Klicks
     df["ad_conversions"] = np.clip(df["ad_spend"] / 10000, 0.05, 1) * rnd.uniform(0,500)  # Annahme: Die Conversion ist vom bezahlten Preis abhängig, np.clip = Wert muss zwischen 0.05 und 1 liegen
-    df["conversion_value"] = df["ad_conversions"] * rnd.uniform(10,150)                                # Annahme: Pro Conversion wird ein Betrag zwischen 10 und 150 Franken ausgegeben.
+    df["conversion_value"] = df["ad_conversions"] * rnd.uniform(100,1000)                                # Annahme: Pro Conversion wird ein Betrag zwischen 10 und 150 Franken ausgegeben.
     # Berechnete KPI
     df["ad_roas"] = df["conversion_value"] / df["ad_spend"]              # wird mit Formel berechnet.
     df["cost_per_click"] = df["ad_spend"] / df["paid_clicks"]            # wird mit Formel berechnet.
@@ -82,8 +83,9 @@ def add_generated_synthetic_data(preprocessed_data: pd.DataFrame, seed: int | No
     # Print some information about the dataset
     print(df.head())
     df.info()
-    print(df.describe(include="all"))
-
+    print(df["ad_roas"].describe(include="all"))
+    plt.hist(df["ad_roas"])
+    plt.show()
     return df
 
 
