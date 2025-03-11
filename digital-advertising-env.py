@@ -84,8 +84,8 @@ def add_generated_synthetic_data(preprocessed_data: pd.DataFrame, seed: int | No
     print(df.head())
     df.info()
     print(df["ad_roas"].describe(include="all"))
-    plt.hist(df["ad_roas"])
-    plt.show()
+    #plt.hist(df["ad_roas"])
+    #plt.show()
     return df
 
 
@@ -95,6 +95,7 @@ def load_data() -> pd.DataFrame:
 
 # Load synthetic dataset
 dataset = add_generated_synthetic_data(preprocessed_data=load_data(), seed=42)
+dataset = dataset[dataset["keyword"] =="iPhone"]
 
 feature_columns = ["competitiveness", "difficulty_score", "organic_rank", "organic_clicks", "organic_ctr",
                    "paid_clicks", "paid_ctr", "ad_spend", "ad_conversions", "ad_roas", "conversion_rate",
@@ -136,7 +137,7 @@ if __name__ == "__main__":
     print("policy: \r\n", policy)
 
 
-    init_rand_steps = 5000
+    init_rand_steps = 500
     collector = SyncDataCollector(
         create_env_fn=env,
         policy=policy_explore,
@@ -149,6 +150,7 @@ if __name__ == "__main__":
     )
     rb = ReplayBuffer(storage=LazyTensorStorage(100_000))
 
+
     # zum debuggen
     # prüfen, ob alle parameter vorhanden sind,
     # ohne ['observation', 'step_count', 'reward', 'done', 'terminated', 'truncated'] ist irgendwo noch ein Fehler vorhanden
@@ -158,10 +160,16 @@ if __name__ == "__main__":
         print("✅ Reward tensor value:", data["next"]["reward"])
         break
 
+
     # auch hier prüfen, ob next vorhanden ist und die benötigten Felder darin vorhanden sind.
     for i, data in enumerate(collector):
-        print(f"Iteration {i + 1}: Collector Output:", data)
-        break
+        if i >= 48:
+            print(f"Iteration {i + 1}: Collector Output:", data["action_value"])
+        #break
+        if i==50:
+            break
+
+
 
     loss = DQNLoss(value_network=policy, action_space=env.action_spec, delay_value=True)
     optim = Adam(loss.parameters(), lr=0.02)
@@ -174,12 +182,16 @@ if __name__ == "__main__":
     t0 = time.time()
     for i, data in enumerate(collector):
         # Write data in replay buffer
-        print(data)
+        print(i, ": data:", data["action_value"])
+        if i == 47:
+            print("i == ", i)
+
         rb.extend(data)
         max_length = rb[:]["next", "step_count"].max()
         print("max_length", max_length)
         if len(rb) > init_rand_steps:
             # Optim loop (we do several optim steps
+            print("Hier beginnt das Training")
             # per batch collected for efficiency)
             for _ in range(optim_steps):
                 sample = rb.sample(128)

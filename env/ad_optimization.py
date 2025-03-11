@@ -60,29 +60,40 @@ class AdOptimizationEnv(EnvBase):
         action = tensordict["action"].argmax().item()
         next_step = self.steps + 15
         next_sample = self.dataset[self.steps:next_step]
-        #next_sample = self.dataset.sample(1).iloc[0]
+        next_sample = self.dataset.sample(1).iloc[0]
+
         # todo how are we going through by keyword would require multiple decisions
         self.steps = self.steps + 1
         budget = tensordict["budget"].item()
         if action == 1:
-            budget -=  (next_sample[-1:]["ad_spend"].item() - next_sample[-1:]["ad_conversions"].item())
+            #budget -=  (next_sample[-1:]["ad_spend"].item() - next_sample[-1:]["ad_conversions"].item())
+            budget -= (next_sample["ad_spend"].item() - next_sample["ad_conversions"].item())
 
         next_state = torch.tensor(
+            #next_sample[-1:][feature_columns].values.astype(np.float32),
             next_sample[feature_columns].values.astype(np.float32),
             dtype=torch.float32
         )
 
-        reward_value = self._compute_reward(action, next_sample[-1:])
+        #reward_value = self._compute_reward(action, next_sample[-1:])
+        reward_value = self._compute_reward(action, next_sample)
         reward = torch.tensor([reward_value], dtype=torch.float32)  # Shape [1], #reward und reward_spec müssen das gleiche Shape haben!
 
         done = budget < 0
         #done = torch.tensor([False], dtype=torch.bool)  # Shape [1]
 
+        # print("observation:", next_state)
+        # print("budget:", budget)
+        # print("reward_value:", reward)
+        # print("done:", done)
+        # print("selected action:", action)
+
+
         # ✅ Fix: Ensure the correct structure
         # hier darf kein nested TensorDict sein, dies wird von TorchRL selbst erstellt!
         return TensorDict({
           "observation": next_state,
-          "budget": torch.tensor(budget),
+          "budget": torch.tensor(budget, dtype=torch.float32),
           "reward": torch.tensor([reward], dtype=torch.float32),
           "done": torch.tensor([done], dtype=torch.bool),
           "action": action
@@ -90,7 +101,8 @@ class AdOptimizationEnv(EnvBase):
 
     def _compute_reward(self, action, sample) -> float:
         # reward prop zu roc
-        return self.compute_reward_of_row(action, sample["ad_roas"].values[0], sample["ad_spend"].values[0])
+        #return self.compute_reward_of_row(action, sample["ad_roas"].values[0], sample["ad_spend"].values[0])
+        return self.compute_reward_of_row(action, sample["ad_roas"], sample["ad_spend"])
 
     def compute_reward_of_row(self, action: int, ad_roas: float, ad_spent: float) -> float:
         reward = 1 / (1 + exp(-ad_roas))
