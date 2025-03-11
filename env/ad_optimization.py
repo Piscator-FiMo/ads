@@ -4,13 +4,10 @@ from typing import Optional
 import pandas as pd
 import torch
 from tensordict import TensorDict, TensorDictBase
-from torch import Tensor
-from torchrl.data import OneHot, CompositeSpec, TensorSpec, UnboundedContinuousTensorSpec, BoundedContinuous
-from torchrl.data.tensor_specs import Box, ContinuousBox, Unbounded, UnboundedContinuous
-from torchrl.envs import EnvBase, make_composite_from_td
+from torchrl.data import OneHot
+from torchrl.envs import EnvBase
 
 
-# Todo add a budget
 # todo env specs
 # make it win and loose money by its decisions
 # done if no more budget
@@ -35,17 +32,21 @@ class AdOptimizationEnv(EnvBase):
     def _step(self, tensordict):
         action = tensordict["action"].argmax(dim=-1).item()
         next_step = self.steps + 15
+        if next_step > self.dataset.size:
+            done = True
+            return TensorDict({"done": torch.tensor(done)}, batch_size=[])
         next_sample = self.dataset[self.steps:next_step]
         # todo how are we going through by keyword would require multiple decisions
         self.steps = self.steps + 1
         budget = tensordict["observation"]["budget"].item()
         if action == 1:
-            budget -=  (next_sample[-1:]["ad_spend"].item() - next_sample[-1:]["ad_conversions"].item())
+            budget -= (next_sample[-1:]["ad_spend"].item() - next_sample[-1:]["ad_conversions"].item())
         next_state = torch.tensor(next_sample[self.feature_columns].values, dtype=torch.float32)
         reward = self._compute_reward(action, next_sample[-1:])
         done = budget < 0
         return TensorDict(
-            {"observation": TensorDict({"data": next_state, "budget": torch.tensor(budget)}), "reward": torch.tensor(reward),
+            {"observation": TensorDict({"data": next_state, "budget": torch.tensor(budget)}),
+             "reward": torch.tensor(reward),
              "done": torch.tensor(done)},
             batch_size=[])
 
