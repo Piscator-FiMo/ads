@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 from tensordict import TensorDict, TensorDictBase
 from torch import Tensor
-from torchrl.data import OneHot, CompositeSpec, TensorSpec, UnboundedContinuousTensorSpec, BoundedContinuous
+from torchrl.data import OneHot, CompositeSpec, TensorSpec, UnboundedContinuousTensorSpec #, BoundedContinuous
 from torchrl.data.tensor_specs import Box, ContinuousBox, Unbounded, UnboundedContinuous
 from torchrl.envs import EnvBase, make_composite_from_td
 

@@ -31,67 +31,44 @@ def add_generated_synthetic_data(preprocessed_data: pd.DataFrame, seed: int | No
     df: pd.DataFrame = preprocessed_data.copy()
     rnd = rand.RandomState(seed)
 
-    df["timestamp"] = df["Day"].apply(lambda day: pd.to_datetime(day, format="%Y-%m-%d"))  # Zeitstempel, täglich
-    df["keyword"] = df["keyword"]  # Suchanfragen zum bestimmten Keyword
-    df["impressions_rel"] = df["freq"]  # Suchanfragen nach Keyword, relative Werte von 0 bis 100
-    df["competitiveness"] = df.apply(lambda _: rnd.uniform(0, 1),
-                                     axis=1)  # Wettbewerbsintensität, 0 = wenig Konkurrenz, 1 = viel Konkurrenz,
-    df["difficulty_score"] = df.apply(lambda _: rnd.uniform(0, 1),
-                                      axis=1)  # Schwierigkeitsgrad für SEO-Rankings (0 = einfach, 1 = sehr schwer).
-    df["organic_rank"] = df.apply(lambda _: rnd.randint(1, 11),
-                                  axis=1)  # Position in der organischen Suche (1 = ganz oben, 10 = unterste Position auf der ersten Seite).
-    df["organic_clicks"] = df.apply(lambda _: rnd.randint(50, 5000), axis=1)  # Anzahl der Klicks aus organischer Suche.
-    df["organic_ctr"] = df.apply(lambda _: rnd.uniform(0.01, 0.3),
-                                 axis=1)  # Click-Through-Rate (CTR) der organischen Ergebnisse (Anteil der Nutzer, die auf das organische Ergebnis klicken).
-    df["paid_clicks"] = df.apply(lambda _: rnd.randint(10, 3000), axis=1)  # Anzahl der Klicks auf die bezahlte Anzeige.
-    df["paid_ctr"] = df.apply(lambda _: rnd.uniform(0.01, 0.25),
-                              axis=1)  # Click-Through-Rate der Anzeige (Wie oft die Anzeige geklickt wird, wenn sie erscheint).
-    df["ad_spend"] = df.apply(lambda _: rnd.uniform(10, 10000), axis=1)  # Werbeausgaben für das Keyword (in CHF).
-    df["ad_conversions"] = df.apply(lambda _: rnd.uniform(0, 500),
-                                    axis=1)  # Anzahl der Conversions durch bezahlte Anzeigen (z. B. Käufe, Anmeldungen).
-    df["ad_roas"] = df.apply(lambda _: rnd.uniform(0.5, 5),
-                             axis=1)  # Return on Ad Spend = conversion_value / ad_spend (Wie profitabel die Werbung ist).
-    df["conversion_rate"] = df.apply(lambda _: rnd.uniform(0.01, 0.3),
-                                     axis=1)  # Anteil der Besucher, die eine gewünschte Aktion ausführen (z. B. Kauf).
-    df["cost_per_click"] = df.apply(lambda _: rnd.uniform(0.1, 10),
-                                    axis=1)  # Kosten pro Klick (CPC) = ad_spend / paid_clicks.
-    df["cost_per_acquisition"] = df.apply(lambda _: rnd.uniform(5, 500),
-                                          axis=1)  # Kosten pro Neukunde (CPA) = ad_spend / ad_conversions.
-    df["previous_recommendation"] = df.apply(lambda _: rnd.choice([0, 1]),
-                                             axis=1)  # Wurde das Keyword zuvor für Werbung empfohlen? (0 = Nein, 1 = Ja).
-    df["impression_share"] = df.apply(lambda _: rnd.uniform(0.1, 1.0),
-                                      axis=1)  # Marktanteil der Anzeigen (0 = kaum sichtbar, 1 = dominiert den Markt).
-    df["conversion_value"] = df.apply(lambda _: rnd.uniform(0, 10000),
-                                      axis=1)  # Gesamtwert der erzielten Conversions in Währungseinheiten.
+    df["timestamp"] = df["Day"].apply(lambda day: pd.to_datetime(day, format="%Y-%m-%d"))   # Zeitstempel, täglich
+    df["keyword"] = df["keyword"]                                                           # Suchanfragen zum bestimmten Keyword
+    df["impressions_rel"] = df["freq"]                                                      # Suchanfragen nach Keyword, relative Werte von 0 bis 100
+    df["competitiveness"] = df.apply(lambda _: rnd.uniform(0, 1),axis=1)          # Wettbewerbsintensität, 0 = wenig Konkurrenz, 1 = viel Konkurrenz,
+    df["difficulty_score"] = df.apply(lambda _: rnd.uniform(0, 1),axis=1)         # Schwierigkeitsgrad für SEO-Rankings (0 = einfach, 1 = sehr schwer).
+    df["organic_rank"] = df.apply(lambda _: rnd.randint(1, 11), axis=1)           # Position in der organischen Suche (1 = ganz oben, 10 = unterste Position auf der ersten Seite).
+    df["organic_clicks"] = df.apply(lambda _: rnd.randint(50, 5000), axis=1)      # Anzahl der Klicks aus organischer Suche.
+    df["organic_ctr"] = df.apply(lambda _: rnd.uniform(0.01, 0.3),axis=1)         # Click-Through-Rate (CTR) der organischen Ergebnisse (Anteil der Nutzer, die auf das organische Ergebnis klicken).
+    df["paid_clicks"] = df.apply(lambda _: rnd.randint(10, 3000), axis=1)         # Anzahl der Klicks auf die bezahlte Anzeige.
+    df["paid_ctr"] = df.apply(lambda _: rnd.uniform(0.01, 0.25),axis=1)           # Click-Through-Rate der Anzeige (Wie oft die Anzeige geklickt wird, wenn sie erscheint).
+    df["ad_spend"] = df.apply(lambda _: rnd.uniform(10, 10000), axis=1)           # Werbeausgaben für das Keyword (in CHF).
+    df["ad_conversions"] = df.apply(lambda _: rnd.uniform(0, 500),axis=1)         # Anzahl der Conversions durch bezahlte Anzeigen (z. B. Käufe, Anmeldungen).
+    df["ad_roas"] = df.apply(lambda _: rnd.uniform(0.5, 5),axis=1)                 # Return on Ad Spend = conversion_value / ad_spend (Wie profitabel die Werbung ist).
+    df["conversion_rate"] = df.apply(lambda _: rnd.uniform(0.01, 0.3),axis=1)     # Anteil der Besucher, die eine gewünschte Aktion ausführen (z. B. Kauf).
+    df["cost_per_click"] = df.apply(lambda _: rnd.uniform(0.1, 10),axis=1)        # Kosten pro Klick (CPC) = ad_spend / paid_clicks.
+    df["cost_per_acquisition"] = df.apply(lambda _: rnd.uniform(5, 500),axis=1)   # Kosten pro Neukunde (CPA) = ad_spend / ad_conversions.
+    df["previous_recommendation"] = df.apply(lambda _: rnd.choice([0, 1]),axis=1)            # Wurde das Keyword zuvor für Werbung empfohlen? (0 = Nein, 1 = Ja).
+    df["impression_share"] = df.apply(lambda _: rnd.uniform(0.1, 1.0),axis=1)     # Marktanteil der Anzeigen (0 = kaum sichtbar, 1 = dominiert den Markt).
+    df["conversion_value"] = df.apply(lambda _: rnd.uniform(0, 10000),axis=1)     # Gesamtwert der erzielten Conversions in Währungseinheiten.
 
     # Abhängigkeit zwischen den Variablen einfügen, allerdings sollen die Daten weiterhin variieren, deshalb bleibt ein random-Teil enthalten.
-    df["competitiveness"] = df["impressions_rel"] / 100 * rnd.uniform(0.5,
-                                                                      0.99)  # Annahme: wenn oft nach einem Begriff gesucht wird, wird auch mehr Werbung geschaltet
-    df["difficulty_score"] = df["competitiveness"] * rnd.uniform(0.8,
-                                                                 0.99)  # Annahme: je höher die Konkurrenz ist, desto schwerer ist es die eigene Seite hoch im Ranking zu platzieren
+    df["competitiveness"] = df["impressions_rel"] / 100 * rnd.uniform(0.5,0.99)   # Annahme: wenn oft nach einem Begriff gesucht wird, wird auch mehr Werbung geschaltet
+    df["difficulty_score"] = df["competitiveness"] * rnd.uniform(0.8,0.99)        # Annahme: je höher die Konkurrenz ist, desto schwerer ist es die eigene Seite hoch im Ranking zu platzieren
     # organic
-    df["organic_rank"] = np.clip((df["difficulty_score"] * rnd.randint(1, 11)).astype(int), 1,
-                                 10)  # Annahme: der Rang der eigenen Seite ist vom difficulty Score abhängig
-    df["organic_clicks"] = df["organic_clicks"] * df["impressions_rel"] / 100 * rnd.uniform(0.2,
-                                                                                            0.5)  # Annahme: Anzahl Klicks ist abhängig von der Anzahl der Suchen
-    df["organic_ctr"] = df["organic_clicks"] / df[
-        "impressions_rel"]  # Annahme: CTR ist abhängig von der Anzahl der Suchen und den Anzahl Klicks
+    df["organic_rank"] = np.clip((df["difficulty_score"] * rnd.randint(1, 11)).astype(int), 1,10)  # Annahme: der Rang der eigenen Seite ist vom difficulty Score abhängig
+    df["organic_clicks"] = df["organic_clicks"] * df["impressions_rel"] / 100 * rnd.uniform(0.2,0.5)            # Annahme: Anzahl Klicks ist abhängig von der Anzahl der Suchen
+    df["organic_ctr"] = df["organic_clicks"] / df["impressions_rel"]                                                      # Annahme: CTR ist abhängig von der Anzahl der Suchen und den Anzahl Klicks
     # paid
-    df["paid_clicks"] = df["paid_clicks"] * df["impressions_rel"] / 100 * rnd.uniform(0.2,
-                                                                                      0.5)  # Annahme: Anzahl Klicks ist abhängig von der Anzahl der Suchen
-    df["paid_ctr"] = df["paid_clicks"] / df["impressions_rel"]  # Annahme: CTR ist abhängig von der Anzahl der Suchen und den Anzahl Klicks
-    df["ad_conversions"] = np.clip(df["ad_spend"] / 10000, 0.05, 1) * rnd.uniform(0,
-                                                                                  500)  # Annahme: Die Conversion ist vom bezahlten Preis abhängig, np.clip = Wert muss zwischen 0.05 und 1 liegen
-    df["conversion_value"] = df["ad_conversions"] * rnd.uniform(10,
-                                                                150)  # Annahme: Pro Conversion wird ein Betrag zwischen 10 und 150 Franken ausgegeben.
+    df["paid_clicks"] = df["paid_clicks"] * df["impressions_rel"] / 100 * rnd.uniform(0.2,0.5)         # Annahme: Anzahl Klicks ist abhängig von der Anzahl der Suchen
+    df["paid_ctr"] = df["paid_clicks"] / df["impressions_rel"]                                                   # Annahme: CTR ist abhängig von der Anzahl der Suchen und den Anzahl Klicks
+    df["ad_conversions"] = np.clip(df["ad_spend"] / 10000, 0.05, 1) * rnd.uniform(0,500)  # Annahme: Die Conversion ist vom bezahlten Preis abhängig, np.clip = Wert muss zwischen 0.05 und 1 liegen
+    df["conversion_value"] = df["ad_conversions"] * rnd.uniform(10,150)                                # Annahme: Pro Conversion wird ein Betrag zwischen 10 und 150 Franken ausgegeben.
     # Berechnete KPI
-    df["ad_roas"] = df["conversion_value"] / df["ad_spend"]  # wird mit Formel berechnet.
-    df["cost_per_click"] = df["ad_spend"] / df["paid_clicks"]  # wird mit Formel berechnet.
-    df["cost_per_acquisition"] = df["ad_spend"] / df["ad_conversions"]  # wird mit Formel berechnet.
-    df["previous_recommendation"] = (df["ad_spend"] > 5000).astype(
-        int)  # Falls vorher viel ausgegeben wurde, empfehlen wir es erneut
-    df["impression_share"] = np.clip(df["ad_spend"] / 10000, 0.05, 1) * rnd.uniform(0.2,
-                                                                                    0.7)  # Annahme: Wenn eine Anzeige ein hohes Budget hat, wird die Anzeige auch oft ausgegeben
+    df["ad_roas"] = df["conversion_value"] / df["ad_spend"]              # wird mit Formel berechnet.
+    df["cost_per_click"] = df["ad_spend"] / df["paid_clicks"]            # wird mit Formel berechnet.
+    df["cost_per_acquisition"] = df["ad_spend"] / df["ad_conversions"]   # wird mit Formel berechnet.
+    df["previous_recommendation"] = (df["ad_spend"] > 5000).astype(int)  # Falls vorher viel ausgegeben wurde, empfehlen wir es erneut
+    df["impression_share"] = np.clip(df["ad_spend"] / 10000, 0.05, 1) * rnd.uniform(0.2,0.7)  # Annahme: Wenn eine Anzeige ein hohes Budget hat, wird die Anzeige auch oft ausgegeben
 
     # Drop the original columns
     df = df.drop(columns=["Day", "freq"])
