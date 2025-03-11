@@ -1,11 +1,12 @@
 from math import exp
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 import torch
 from tensordict import TensorDict, TensorDictBase
 from torch import Tensor
-from torchrl.data import OneHot, CompositeSpec, TensorSpec, UnboundedContinuousTensorSpec #, BoundedContinuous
+from torchrl.data import OneHot, Composite, CompositeSpec, TensorSpec, UnboundedContinuousTensorSpec #, BoundedContinuous
 from torchrl.data.tensor_specs import Box, ContinuousBox, Unbounded, UnboundedContinuous
 from torchrl.envs import EnvBase, make_composite_from_td
 
@@ -14,40 +15,78 @@ from torchrl.envs import EnvBase, make_composite_from_td
 # todo env specs
 # make it win and loose money by its decisions
 # done if no more budget
+feature_columns = ["competitiveness", "difficulty_score", "organic_rank", "organic_clicks", "organic_ctr", "paid_clicks", "paid_ctr", "ad_spend", "ad_conversions", "ad_roas", "conversion_rate", "cost_per_click"]
+
 # Define a Custom TorchRL Environment
 class AdOptimizationEnv(EnvBase):
-    def __init__(self, dataset: pd.DataFrame, feature_columns: list[str], budget: int):
+    def __init__(self, dataset: pd.DataFrame, budget: int):
         super().__init__()
         self.dataset = dataset
+        # batch_size ist hier die Environment Batch = Anzahl Environment, welche trainiert werden sollen.
+        super().__init__(batch_size=torch.Size([]))  # ✅ Single environment
+
         self.feature_columns = feature_columns
+        self.dataset = dataset
         self.num_features = len(feature_columns)
-        self.action_spec = OneHot(n=2, dtype=torch.int64)
         self.steps = 0
         self.budget = budget
-        self._reset(TensorDict({"done": torch.tensor(False)}))
 
-    def _reset(self, tensordict: TensorDictBase, **kwargs) -> TensorDictBase:
-        sample = self.dataset.sample(1)
+
+        # ✅ Fix: Define action, observation, and reward specs correctly
+        # diese drei Parameter müssen genau so definiert werden, ansonsten werden sie von TorchRL ohne Fehlermeldung gelöscht
+        # OneHot(n=2) = Ja, Nein
+        # Observation = Zeilenvektor
+        # Reward = nur eine Zahl
+        self.action_spec = Composite(action=OneHot(n=2, dtype=torch.int64))
+        self.observation_spec = Composite(observation=Unbounded(shape=(self.num_features,), dtype=torch.float32))
+        self.reward_spec = Composite(reward=Unbounded(shape=(1,), dtype=torch.float32))  # ✅ Corrected
+
+        #self._reset(TensorDict({"done": torch.tensor(False)}))
+
+
+    def _reset(self, tensordict=None):
+        """Reset environment and return initial state."""
+        sample = self.dataset.sample(1).iloc[0]
         self.steps = 0
-        state = torch.tensor(sample[self.feature_columns].values, dtype=torch.float32)
-        return TensorDict({"observation": TensorDict({"data": state, "budget": self.budget})}, batch_size=[])
+        state = torch.tensor(sample[feature_columns].values.astype(np.float32), dtype=torch.float32)
+        return TensorDict({
+            "observation": state,
+            "budget": self.budget,
+            "done": torch.tensor([False], dtype=torch.bool),  # Explicit shape [1]
+        }, batch_size=[])
 
     def _step(self, tensordict):
-        action = tensordict["action"].argmax(dim=-1).item()
+        """Performs one step and returns the next state, reward, and done."""
+        action = tensordict["action"].argmax().item()
         next_step = self.steps + 15
         next_sample = self.dataset[self.steps:next_step]
+        #next_sample = self.dataset.sample(1).iloc[0]
         # todo how are we going through by keyword would require multiple decisions
         self.steps = self.steps + 1
-        budget = tensordict["observation"]["budget"].item()
+        budget = tensordict["budget"].item()
         if action == 1:
             budget -=  (next_sample[-1:]["ad_spend"].item() - next_sample[-1:]["ad_conversions"].item())
-        next_state = torch.tensor(next_sample[self.feature_columns].values, dtype=torch.float32)
-        reward = self._compute_reward(action, next_sample[-1:])
+
+        next_state = torch.tensor(
+            next_sample[feature_columns].values.astype(np.float32),
+            dtype=torch.float32
+        )
+
+        reward_value = self._compute_reward(action, next_sample[-1:])
+        reward = torch.tensor([reward_value], dtype=torch.float32)  # Shape [1], #reward und reward_spec müssen das gleiche Shape haben!
+
         done = budget < 0
-        return TensorDict(
-            {"observation": TensorDict({"data": next_state, "budget": torch.tensor(budget)}), "reward": torch.tensor(reward),
-             "done": torch.tensor(done)},
-            batch_size=[])
+        #done = torch.tensor([False], dtype=torch.bool)  # Shape [1]
+
+        # ✅ Fix: Ensure the correct structure
+        # hier darf kein nested TensorDict sein, dies wird von TorchRL selbst erstellt!
+        return TensorDict({
+          "observation": next_state,
+          "budget": torch.tensor(budget),
+          "reward": torch.tensor([reward], dtype=torch.float32),
+          "done": torch.tensor([done], dtype=torch.bool),
+          "action": action
+        })  # ✅ Ensure batch size is correctly set
 
     def _compute_reward(self, action, sample) -> float:
         # reward prop zu roc

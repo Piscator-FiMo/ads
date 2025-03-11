@@ -103,74 +103,104 @@ feature_columns = ["competitiveness", "difficulty_score", "organic_rank", "organ
 if __name__ == "__main__":
 
     # Initialize Environment
-    env = AdOptimizationEnv(dataset, feature_columns, 1000000)
-    env = TransformedEnv(env, StepCounter())
-    state_dim = env.num_features
-    action_dim = env.action_spec.n
-    print(env.observation_spec)
-    td = env.reset()
-    print(td)
-    td = env.rand_step(td)
-    print(td)
+    env = AdOptimizationEnv(dataset, budget=1_000_000)
+    env = TransformedEnv(env, StepCounter(max_steps=50_000))
+
+    print("Observation Keys:", env.observation_keys)
+    print("Action Keys:", env.action_keys)
+    print("Reward Keys:", env.reward_keys)
+
+    print("env.observation_spec:\r\n", env.observation_spec)
+    print("env.action_spec:\r\n", env.action_spec)
+    print("env.reward_spec:\r\n", env.reward_spec)
+
+    #state_dim = env.num_features
+    #action_dim = env.action_spec.n
+    #print(env.observation_spec)
+    #td = env.reset()
+    #print(td)
+    #td = env.rand_step(td)
+    #print(td)
+
+    value_mlp = MLP(in_features=env.num_features, out_features=env.action_spec.shape[-1], num_cells=[64, 64])
+    value_net = TensorDictModule(value_mlp, in_keys=["observation"],
+                                 out_keys=["action_value"])  # observation und action_value müssen genau so heissen
+    policy = TensorDictSequential(value_net, QValueModule(spec=env.action_spec))
+    exploration_module = EGreedyModule(
+        env.action_spec, annealing_num_steps=100_000, eps_init=0.9
+        # annealing_num_steps darf nicht höher sein als total_frames
+    )
+    policy_explore = TensorDictSequential(policy, exploration_module)
+
+    print("value_mlp: \r\n", value_mlp)
+    print("policy: \r\n", policy)
 
 
-    # env.action_spec
-    #
-    # value_mlp = MLP(in_features=env.num_features, out_features=env.action_spec.shape[-1], num_cells=[64, 64])
-    # value_net = TensorDictModule(value_mlp, in_keys=["observation"], out_keys=["action_value"])
-    # policy = TensorDictSequential(value_net, QValueModule(spec=env.action_spec))
-    # exploration_module = EGreedyModule(
-    #     env.action_spec, annealing_num_steps=100_000, eps_init=0.5
-    # )
-    # policy_explore = TensorDictSequential(policy, exploration_module)
-    #
-    # value_mlp
-    #
-    # init_rand_steps = 5000
-    # frames_per_batch = 100
-    # optim_steps = 10
-    # collector = SyncDataCollector(
-    #     env,
-    #     policy_explore,
-    #     frames_per_batch=frames_per_batch,
-    #     total_frames=-1,
-    #     init_random_frames=init_rand_steps,
-    # )
-    # rb = ReplayBuffer(storage=LazyTensorStorage(100_000))
-    #
-    # loss = DQNLoss(value_network=policy, action_space=env.action_spec, delay_value=True)
-    # optim = Adam(loss.parameters(), lr=0.02)
-    # updater = SoftUpdate(loss, eps=0.99)
-    #
-    # total_count = 0
-    # total_episodes = 0
-    # t0 = time.time()
-    # for i, data in enumerate(collector):
-    #     # Write data in replay buffer
-    #     rb.extend(data)
-    #     max_length = rb[:]["next", "step_count"].max()
-    #     if len(rb) > init_rand_steps:
-    #         # Optim loop (we do several optim steps
-    #         # per batch collected for efficiency)
-    #         for _ in range(optim_steps):
-    #             sample = rb.sample(128)
-    #             loss_vals = loss(sample)
-    #             loss_vals["loss"].backward()
-    #             optim.step()
-    #             optim.zero_grad()
-    #             # Update exploration factor
-    #             exploration_module.step(data.numel())
-    #             # Update target params
-    #             updater.step()
-    #             if i % 10:
-    #                 print(f"Max num steps: {max_length}, rb length {len(rb)}")
-    #             total_count += data.numel()
-    #             total_episodes += data["next", "done"].sum()
-    #     if max_length > 200:
-    #         break
-    #
-    # t1 = time.time()
-    #
-    # print(
-    #     f"solved after {total_count} steps, {total_episodes} episodes and in {t1 - t0}s."
-    # )
+    init_rand_steps = 5000
+    collector = SyncDataCollector(
+        create_env_fn=env,
+        policy=policy_explore,
+        frames_per_batch=1,  # ✅ Match the batch size
+        total_frames=10_000,
+        init_random_frames=init_rand_steps,
+        storing_device="cpu",  # ✅ Ensure storing happens on CPU
+        split_trajs=False,  # ✅ Prevent trajectory splitting from dropping keys
+        exploration_type="mode"
+    )
+    rb = ReplayBuffer(storage=LazyTensorStorage(100_000))
+
+    # zum debuggen
+    # prüfen, ob alle parameter vorhanden sind,
+    # ohne ['observation', 'step_count', 'reward', 'done', 'terminated', 'truncated'] ist irgendwo noch ein Fehler vorhanden
+    for data in collector:
+        print("✅ Next keys:", data["next"].keys())
+        print("✅ Reward tensor shape:", data["next"]["reward"].shape)
+        print("✅ Reward tensor value:", data["next"]["reward"])
+        break
+
+    # auch hier prüfen, ob next vorhanden ist und die benötigten Felder darin vorhanden sind.
+    for i, data in enumerate(collector):
+        print(f"Iteration {i + 1}: Collector Output:", data)
+        break
+
+    loss = DQNLoss(value_network=policy, action_space=env.action_spec, delay_value=True)
+    optim = Adam(loss.parameters(), lr=0.02)
+    updater = SoftUpdate(loss, eps=0.99)
+
+
+    total_count = 0
+    total_episodes = 0
+    optim_steps = 10
+    t0 = time.time()
+    for i, data in enumerate(collector):
+        # Write data in replay buffer
+        print(data)
+        rb.extend(data)
+        max_length = rb[:]["next", "step_count"].max()
+        print("max_length", max_length)
+        if len(rb) > init_rand_steps:
+            # Optim loop (we do several optim steps
+            # per batch collected for efficiency)
+            for _ in range(optim_steps):
+                sample = rb.sample(128)
+                loss_vals = loss(sample)
+                print("loss function is called:", loss_vals)
+                loss_vals["loss"].backward()
+                optim.step()
+                optim.zero_grad()
+                # Update exploration factor
+                exploration_module.step(data.numel())
+                # Update target params
+                updater.step()
+                if i % 10:
+                    print(f"Max num steps: {max_length}, rb length {len(rb)}")
+                total_count += data.numel()
+                total_episodes += data["next", "done"].sum()
+        # if max_length > 200:
+        #    break
+
+    t1 = time.time()
+
+    print(
+        f"solved after {total_count} steps, {total_episodes} episodes and in {t1-t0}s."
+    )
