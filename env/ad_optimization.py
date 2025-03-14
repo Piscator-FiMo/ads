@@ -21,6 +21,12 @@ class AdOptimizationEnv(EnvBase):
         self.action_spec = OneHot(n=2, dtype=torch.int64)
         self.steps = 0
         self.budget = budget
+        self.observation_spec = Composite(
+            observation=Composite(data=Unbounded(shape=(self.num_features,), dtype=torch.float32),
+                                  budget=Unbounded(shape=(1,), dtype=torch.float32)))
+        self.reward_spec = Composite(
+            reward=Unbounded(shape=(1,), dtype=torch.float32)
+        )
         self._reset(TensorDict({"done": torch.tensor(False)}))
 
     def _reset(self, tensordict: TensorDictBase, **kwargs) -> TensorDictBase:
