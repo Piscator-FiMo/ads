@@ -13,7 +13,7 @@ from typing import Optional
 
 from tensordict import TensorDict, TensorDictBase
 from tensordict.nn import TensorDictModule, TensorDictSequential
-from torchrl.envs import EnvBase, TransformedEnv, StepCounter
+from torchrl.envs import EnvBase, TransformedEnv, StepCounter, check_env_specs
 from torchrl.objectives import DQNLoss, SoftUpdate
 from torchrl.collectors import SyncDataCollector
 from torchrl.modules import EGreedyModule, MLP, QValueModule
@@ -24,6 +24,7 @@ from torch.optim import Adam
 import matplotlib.pyplot as plt
 
 from env.ad_optimization import AdOptimizationEnv
+from env.transforms import AttachZeroDimTensor
 
 
 # Generate Realistic Synthetic Data
@@ -79,7 +80,8 @@ def add_generated_synthetic_data(preprocessed_data: pd.DataFrame, seed: int | No
     # paid
     df["paid_clicks"] = df["paid_clicks"] * df["impressions_rel"] / 100 * rnd.uniform(0.2,
                                                                                       0.5)  # Annahme: Anzahl Klicks ist abhängig von der Anzahl der Suchen
-    df["paid_ctr"] = df["paid_clicks"] / df["impressions_rel"]  # Annahme: CTR ist abhängig von der Anzahl der Suchen und den Anzahl Klicks
+    df["paid_ctr"] = df["paid_clicks"] / df[
+        "impressions_rel"]  # Annahme: CTR ist abhängig von der Anzahl der Suchen und den Anzahl Klicks
     df["ad_conversions"] = np.clip(df["ad_spend"] / 10000, 0.05, 1) * rnd.uniform(0,
                                                                                   500)  # Annahme: Die Conversion ist vom bezahlten Preis abhängig, np.clip = Wert muss zwischen 0.05 und 1 liegen
     df["conversion_value"] = df["ad_conversions"] * rnd.uniform(10,
@@ -122,76 +124,72 @@ feature_columns = ["competitiveness", "difficulty_score", "organic_rank", "organ
                    "cost_per_click"]
 
 if __name__ == "__main__":
-
     # Initialize Environment
     env = AdOptimizationEnv(dataset, feature_columns, 1000000)
     env = TransformedEnv(env, StepCounter())
+    env = TransformedEnv(env, AttachZeroDimTensor(in_keys=["observation"], out_keys=["observation"],
+                                                  attach_keys=["data", "budget"]))
     state_dim = env.num_features
     action_dim = env.action_spec.n
     print(env.observation_spec)
-    td = env.reset()
-    print(td)
-    td = env.rand_step(td)
-    print(td)
+    check_env_specs(env)
+    # td = env.reset()
+    # print(td)
+    # td = env.rand_step(td)
+    # print(td)
 
+    value_mlp = MLP(in_features=env.num_features + 1, out_features=env.action_spec.shape[-1], num_cells=[64, 64])
+    value_net = TensorDictModule(value_mlp, in_keys=["observation"], out_keys=["action_value"])
+    policy = TensorDictSequential(value_net, QValueModule(spec=env.action_spec))
+    exploration_module = EGreedyModule(
+        env.action_spec, annealing_num_steps=100_000, eps_init=0.5
+    )
+    policy_explore = TensorDictSequential(policy, exploration_module)
+    init_rand_steps = 5000
+    frames_per_batch = 100
+    optim_steps = 10
+    collector = SyncDataCollector(
+        env,
+        policy_explore,
+        frames_per_batch=frames_per_batch,
+        total_frames=-1,
+        init_random_frames=init_rand_steps,
+    )
+    rb = ReplayBuffer(storage=LazyTensorStorage(100_000))
 
-    # env.action_spec
-    #
-    # value_mlp = MLP(in_features=env.num_features, out_features=env.action_spec.shape[-1], num_cells=[64, 64])
-    # value_net = TensorDictModule(value_mlp, in_keys=["observation"], out_keys=["action_value"])
-    # policy = TensorDictSequential(value_net, QValueModule(spec=env.action_spec))
-    # exploration_module = EGreedyModule(
-    #     env.action_spec, annealing_num_steps=100_000, eps_init=0.5
-    # )
-    # policy_explore = TensorDictSequential(policy, exploration_module)
-    #
-    # value_mlp
-    #
-    # init_rand_steps = 5000
-    # frames_per_batch = 100
-    # optim_steps = 10
-    # collector = SyncDataCollector(
-    #     env,
-    #     policy_explore,
-    #     frames_per_batch=frames_per_batch,
-    #     total_frames=-1,
-    #     init_random_frames=init_rand_steps,
-    # )
-    # rb = ReplayBuffer(storage=LazyTensorStorage(100_000))
-    #
-    # loss = DQNLoss(value_network=policy, action_space=env.action_spec, delay_value=True)
-    # optim = Adam(loss.parameters(), lr=0.02)
-    # updater = SoftUpdate(loss, eps=0.99)
-    #
-    # total_count = 0
-    # total_episodes = 0
-    # t0 = time.time()
-    # for i, data in enumerate(collector):
-    #     # Write data in replay buffer
-    #     rb.extend(data)
-    #     max_length = rb[:]["next", "step_count"].max()
-    #     if len(rb) > init_rand_steps:
-    #         # Optim loop (we do several optim steps
-    #         # per batch collected for efficiency)
-    #         for _ in range(optim_steps):
-    #             sample = rb.sample(128)
-    #             loss_vals = loss(sample)
-    #             loss_vals["loss"].backward()
-    #             optim.step()
-    #             optim.zero_grad()
-    #             # Update exploration factor
-    #             exploration_module.step(data.numel())
-    #             # Update target params
-    #             updater.step()
-    #             if i % 10:
-    #                 print(f"Max num steps: {max_length}, rb length {len(rb)}")
-    #             total_count += data.numel()
-    #             total_episodes += data["next", "done"].sum()
-    #     if max_length > 200:
-    #         break
-    #
-    # t1 = time.time()
-    #
-    # print(
-    #     f"solved after {total_count} steps, {total_episodes} episodes and in {t1 - t0}s."
-    # )
+    loss = DQNLoss(value_network=policy, action_space=env.action_spec, delay_value=True)
+    optim = Adam(loss.parameters(), lr=0.02)
+    updater = SoftUpdate(loss, eps=0.99)
+
+    total_count = 0
+    total_episodes = 0
+    t0 = time.time()
+    for i, data in enumerate(collector):
+        # Write data in replay buffer
+        rb.extend(data)
+        max_length = rb[:]["next", "step_count"].max()
+        if len(rb) > init_rand_steps:
+            # Optim loop (we do several optim steps
+            # per batch collected for efficiency)
+            for _ in range(optim_steps):
+                sample = rb.sample(128)
+                loss_vals = loss(sample)
+                loss_vals["loss"].backward()
+                optim.step()
+                optim.zero_grad()
+                # Update exploration factor
+                exploration_module.step(data.numel())
+                # Update target params
+                updater.step()
+                if i % 10:
+                    print(f"Max num steps: {max_length}, rb length {len(rb)}")
+                total_count += data.numel()
+                total_episodes += data["next", "done"].sum()
+        if max_length > 200:
+            break
+
+    t1 = time.time()
+
+    print(
+        f"solved after {total_count} steps, {total_episodes} episodes and in {t1 - t0}s."
+    )
