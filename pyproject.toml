@@ -5,6 +5,10 @@ description = ""
 authors = [
     {name = "Your Name",email = "you@example.com"}
 ]
+packages = [
+    { include = "env" },
+    { include = "preprocess" },
+]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -12,7 +16,8 @@ dependencies = [
     "numpy (>=2.2.3,<3.0.0)",
     "pandas (>=2.2.3,<3.0.0)",
     "torchrl (>=0.7.1,<0.8.0)",
-    "matplotlib (>=3.10.1,<4.0.0)"
+    "matplotlib (>=3.10.1,<4.0.0)",
+    "tqdm (>=4.67.1,<5.0.0)"
 ]
 
 

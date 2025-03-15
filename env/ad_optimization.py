@@ -19,7 +19,7 @@ feature_columns = ["competitiveness", "difficulty_score", "organic_rank", "organ
 
 # Define a Custom TorchRL Environment
 class AdOptimizationEnv(EnvBase):
-    def __init__(self, dataset: pd.DataFrame, budget: int):
+    def __init__(self, dataset: pd.DataFrame, initial_budget: int):
         super().__init__()
         self.dataset = dataset
         # batch_size ist hier die Environment Batch = Anzahl Environment, welche trainiert werden sollen.
@@ -29,7 +29,7 @@ class AdOptimizationEnv(EnvBase):
         self.dataset = dataset
         self.num_features = len(feature_columns)
         self.steps = 0
-        self.budget = budget
+        self.initial_budget = initial_budget
 
 
         # ✅ Fix: Define action, observation, and reward specs correctly
@@ -46,29 +46,27 @@ class AdOptimizationEnv(EnvBase):
 
     def _reset(self, tensordict=None):
         """Reset environment and return initial state."""
-        sample = self.dataset.sample(1).iloc[0]
+        sample = self.dataset.iloc[0]
         self.steps = 0
+        self.budget = self.initial_budget
         state = torch.tensor(sample[feature_columns].values.astype(np.float32), dtype=torch.float32)
         return TensorDict({
             "observation": state,
-            "budget": self.budget,
+            #"budget": self.budget,
             "done": torch.tensor([False], dtype=torch.bool),  # Explicit shape [1]
         }, batch_size=[])
 
     def _step(self, tensordict):
         """Performs one step and returns the next state, reward, and done."""
         action = tensordict["action"].argmax().item()
-        next_step = self.steps + 15
-        next_sample = self.dataset[self.steps:next_step]
-        next_sample = self.dataset.sample(1).iloc[0]
+        next_step = self.steps + 1
+        next_sample = self.dataset.iloc[next_step]
 
-        # todo how are we going through by keyword would require multiple decisions
         self.steps = self.steps + 1
-        budget = tensordict["budget"].item()
+
         if action == 1:
             #budget -=  (next_sample[-1:]["ad_spend"].item() - next_sample[-1:]["ad_conversions"].item())
-            budget -= (next_sample["ad_spend"].item() - next_sample["ad_conversions"].item())
-
+            self.budget -= (next_sample["ad_spend"].item() - next_sample["ad_conversions"].item())
         next_state = torch.tensor(
             #next_sample[-1:][feature_columns].values.astype(np.float32),
             next_sample[feature_columns].values.astype(np.float32),
@@ -79,7 +77,7 @@ class AdOptimizationEnv(EnvBase):
         reward_value = self._compute_reward(action, next_sample)
         reward = torch.tensor([reward_value], dtype=torch.float32)  # Shape [1], #reward und reward_spec müssen das gleiche Shape haben!
 
-        done = budget < 0
+        done = self.budget < 0
         #done = torch.tensor([False], dtype=torch.bool)  # Shape [1]
 
         # print("observation:", next_state)
@@ -93,10 +91,10 @@ class AdOptimizationEnv(EnvBase):
         # hier darf kein nested TensorDict sein, dies wird von TorchRL selbst erstellt!
         return TensorDict({
           "observation": next_state,
-          "budget": torch.tensor(budget, dtype=torch.float32),
+       #   "budget": torch.tensor(budget, dtype=torch.float32),
           "reward": torch.tensor([reward], dtype=torch.float32),
           "done": torch.tensor([done], dtype=torch.bool),
-          "action": action
+      #    "action": action
         })  # ✅ Ensure batch size is correctly set
 
     def _compute_reward(self, action, sample) -> float:

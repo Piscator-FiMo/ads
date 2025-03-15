@@ -13,6 +13,19 @@ files = [
 ]
 
 [[package]]
+name = "colorama"
+version = "0.4.6"
+description = "Cross-platform colored terminal text."
+optional = false
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
+groups = ["main"]
+markers = "platform_system == \"Windows\""
+files = [
+    {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
+    {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
+]
+
+[[package]]
 name = "contourpy"
 version = "1.3.1"
 description = "Python library for calculating contours of 2D quadrilateral grids"
@@ -1228,27 +1241,27 @@ optree = ["optree (>=0.13.0)"]
 
 [[package]]
 name = "torchrl"
-version = "0.7.1"
+version = "0.7.2"
 description = ""
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "torchrl-0.7.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:f10e23ac7881aaa5d0defab0be67708cf6a68fa915dae357e2f19249aba6434f"},
-    {file = "torchrl-0.7.1-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:f3e16a80494f234e6bf4f39bfa061a42fc401e3898eab11372d7c27402978a30"},
-    {file = "torchrl-0.7.1-cp310-cp310-win_amd64.whl", hash = "sha256:dd41cf78ac6f01f341f4629a505afadf4df1bf53df99d2218f0391e7ee998ccb"},
-    {file = "torchrl-0.7.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:49c130bdaa2a982a93187a0113db1d9f891ff90ddf0997b3158c7a8c923e25e0"},
-    {file = "torchrl-0.7.1-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:94009a1fd2fcec000342c84f48dd07f2208e011f7a03182bf82cf5409d5eed0c"},
-    {file = "torchrl-0.7.1-cp311-cp311-win_amd64.whl", hash = "sha256:af54247cb94555b2cb99eb9c8adcd463a22c7ed94f82f263068cd221ab77687e"},
-    {file = "torchrl-0.7.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:76cb24d09a4dc4ea2fe5cc6017ef409debc6f67060d757f62a6ce93ed35ac0b1"},
-    {file = "torchrl-0.7.1-cp312-cp312-manylinux1_x86_64.whl", hash = "sha256:4e9ef6d9f896e43ba7b36f58b65eaec6864f9be63f02b4ea61b07e9ff20adcb2"},
-    {file = "torchrl-0.7.1-cp312-cp312-win_amd64.whl", hash = "sha256:6e7405109116ad04de62aa3f248bf07fa1eb418829ef9a1d53b24564b46508be"},
-    {file = "torchrl-0.7.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:b5d4cf89553849bb4fec616cacd03963756525e01468ba57234455c4dd7b4ef6"},
-    {file = "torchrl-0.7.1-cp313-cp313-manylinux1_x86_64.whl", hash = "sha256:6e6e798beefd39cfa425418248044a63f7f77c9c184ee4485f219bc7adaff069"},
-    {file = "torchrl-0.7.1-cp313-cp313-win_amd64.whl", hash = "sha256:66dc764b014a17d8d9a77a5dd204c32cb3af420558b2f15044398fdb8ad7e0ff"},
-    {file = "torchrl-0.7.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:ac504f4229e5337bef7fa4d57398b98c8e7ee2241be09f9b79490cd6682dce50"},
-    {file = "torchrl-0.7.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:574683465d7df9712e4ac809b650156ff2eb99a5cd908be5f47159e2040736ee"},
-    {file = "torchrl-0.7.1-cp39-cp39-win_amd64.whl", hash = "sha256:382217a0eb32306a2bd50bc8c2930945bd54ece2ffb2670e033f6cf29a1148d1"},
+    {file = "torchrl-0.7.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:48bf238f9a73b2711c7757877957691e1f5d926057597272e944e8c0dbab4053"},
+    {file = "torchrl-0.7.2-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:c04f72980bc0ed7931c053c5937761d32a023b1d6bf53378c4ad80b3dbd5231f"},
+    {file = "torchrl-0.7.2-cp310-cp310-win_amd64.whl", hash = "sha256:4f9a39a4ab4927cf06fb18ea636f69a30df8da59a7ac1f2a8fdcaeb158345ae9"},
+    {file = "torchrl-0.7.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:a0bdb3cdf280c6c262a1ee2c5cac8d4b8b314d3b6210635145378d690e406426"},
+    {file = "torchrl-0.7.2-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:44fc12c0c1ea75141562c252bb199e2b48f9bcf9b6dbf59e6d91c3434e69e490"},
+    {file = "torchrl-0.7.2-cp311-cp311-win_amd64.whl", hash = "sha256:315f469b1c7c9a544aebe276cb571110ad7ca9f1134ce0cb0def9e31a714c6d8"},
+    {file = "torchrl-0.7.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:f6633b3dccf1fc683d5bc402f57f1044e70fce59ad3fc6f6e386d98243f96453"},
+    {file = "torchrl-0.7.2-cp312-cp312-manylinux1_x86_64.whl", hash = "sha256:56cd7d2724efdf7bd6204bb9d577653ead5cf2dd2d8f943d2ecc58de0663bfc1"},
+    {file = "torchrl-0.7.2-cp312-cp312-win_amd64.whl", hash = "sha256:8303bbedff7ef87de91cac427774154c123ae9c15f47c1e3a2b40d344d23ab25"},
+    {file = "torchrl-0.7.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0461baa43cd30e44557a55d41c4573f7c036141ed2646b4616cab14dd4c43bbd"},
+    {file = "torchrl-0.7.2-cp313-cp313-manylinux1_x86_64.whl", hash = "sha256:56f4105e46c7018d6726bfe5b8c6e4ed94f707d87cf2d592b114a34ea93facb4"},
+    {file = "torchrl-0.7.2-cp313-cp313-win_amd64.whl", hash = "sha256:e618da4240ee6157affda7d140d76e047cbbb168717af502e32d5f9164728967"},
+    {file = "torchrl-0.7.2-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:536d6baba8ed7a0cc92de1e88ef582894294f20c3167af2750cb5626819e410d"},
+    {file = "torchrl-0.7.2-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:dcdd75d8e0b11a17c7e1f7e0bdc32dd615defd5d4395418cf927107556542d2e"},
+    {file = "torchrl-0.7.2-cp39-cp39-win_amd64.whl", hash = "sha256:eccd101ba913601955d4eaf73c510f727aadea4621a98cb000b862b02b2e3a48"},
 ]
 
 [package.dependencies]
@@ -1270,6 +1283,28 @@ open-spiel = ["open_spiel (>=1.5)"]
 rendering = ["moviepy (<2.0.0)"]
 tests = ["pytest", "pytest-benchmark", "pytest-cov", "pytest-error-for-skips", "pytest-instafail", "pytest-mock", "pytest-rerunfailures", "pyyaml", "scipy"]
 utils = ["git", "hydra-core (>=1.1)", "hydra-submitit-launcher", "tensorboard", "tqdm", "wandb"]
+
+[[package]]
+name = "tqdm"
+version = "4.67.1"
+description = "Fast, Extensible Progress Meter"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "tqdm-4.67.1-py3-none-any.whl", hash = "sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2"},
+    {file = "tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[package.extras]
+dev = ["nbval", "pytest (>=6)", "pytest-asyncio (>=0.24)", "pytest-cov", "pytest-timeout"]
+discord = ["requests"]
+notebook = ["ipywidgets (>=6)"]
+slack = ["slack-sdk"]
+telegram = ["requests"]
 
 [[package]]
 name = "triton"
@@ -1319,4 +1354,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "dca5f63d16843caf0027fe420e6626807b7f0bf7104c537ebe00caf93c2884b5"
+content-hash = "055eaf37f57da2f30b8d399c94e59de47afd0441e1824e988c360d072b14e60a"

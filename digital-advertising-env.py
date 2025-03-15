@@ -151,25 +151,6 @@ if __name__ == "__main__":
     rb = ReplayBuffer(storage=LazyTensorStorage(100_000))
 
 
-    # zum debuggen
-    # prüfen, ob alle parameter vorhanden sind,
-    # ohne ['observation', 'step_count', 'reward', 'done', 'terminated', 'truncated'] ist irgendwo noch ein Fehler vorhanden
-    for data in collector:
-        print("✅ Next keys:", data["next"].keys())
-        print("✅ Reward tensor shape:", data["next"]["reward"].shape)
-        print("✅ Reward tensor value:", data["next"]["reward"])
-        break
-
-
-    # auch hier prüfen, ob next vorhanden ist und die benötigten Felder darin vorhanden sind.
-    for i, data in enumerate(collector):
-        if i >= 48:
-            print(f"Iteration {i + 1}: Collector Output:", data["action_value"])
-        #break
-        if i==50:
-            break
-
-
 
     loss = DQNLoss(value_network=policy, action_space=env.action_spec, delay_value=True)
     optim = Adam(loss.parameters(), lr=0.02)
@@ -190,13 +171,11 @@ if __name__ == "__main__":
         max_length = rb[:]["next", "step_count"].max()
         print("max_length", max_length)
         if len(rb) > init_rand_steps:
-            # Optim loop (we do several optim steps
-            print("Hier beginnt das Training")
             # per batch collected for efficiency)
             for _ in range(optim_steps):
                 sample = rb.sample(128)
                 loss_vals = loss(sample)
-                print("loss function is called:", loss_vals)
+                print("loss function is called:", loss_vals["loss"])
                 loss_vals["loss"].backward()
                 optim.step()
                 optim.zero_grad()
@@ -204,7 +183,7 @@ if __name__ == "__main__":
                 exploration_module.step(data.numel())
                 # Update target params
                 updater.step()
-                if i % 10:
+                if i % 100:
                     print(f"Max num steps: {max_length}, rb length {len(rb)}")
                 total_count += data.numel()
                 total_episodes += data["next", "done"].sum()
