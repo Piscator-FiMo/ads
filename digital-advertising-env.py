@@ -121,6 +121,7 @@ if __name__ == "__main__":
                                                   attach_keys=["data", "budget"]))
     env = TransformedEnv(env, StepCounter())
     check_env_specs(env)
+    print(env.action_spec)
 
     value_mlp = MLP(in_features=env.num_features + 1, out_features=env.action_spec.shape[-1], num_cells=[64, 64])
     value_net = TensorDictModule(value_mlp, in_keys=["observation"], out_keys=["action_value"])
@@ -133,11 +134,14 @@ if __name__ == "__main__":
     frames_per_batch = 100
     optim_steps = 10
     collector = SyncDataCollector(
-        env,
-        policy_explore,
-        frames_per_batch=frames_per_batch,
-        total_frames=-1,
+        create_env_fn=env,
+        policy=policy_explore,
+        frames_per_batch=1,  # ✅ Match the batch size
+        total_frames=10_000,
         init_random_frames=init_rand_steps,
+        storing_device="cpu",  # ✅ Ensure storing happens on CPU
+        split_trajs=False,  # ✅ Prevent trajectory splitting from dropping keys
+        exploration_type="mode"
     )
     rb = ReplayBuffer(storage=LazyTensorStorage(100_000))
 

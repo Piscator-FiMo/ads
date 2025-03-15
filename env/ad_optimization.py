@@ -9,7 +9,6 @@ from torchrl.data import OneHot, Composite, Unbounded
 from torchrl.envs import EnvBase
 
 
-# todo env specs
 # make it win and loose money by its decisions
 # done if no more budget
 # Define a Custom TorchRL Environment
@@ -19,11 +18,12 @@ class AdOptimizationEnv(EnvBase):
         self.dataset = dataset
         self.feature_columns = feature_columns
         self.num_features = len(feature_columns)
-        self.action_spec = OneHot(n=2, dtype=torch.int64)
+        self.action_spec = Composite(action=OneHot(n=2, dtype=torch.int64))
         self.steps = 0
         self.budget = budget
+        self.step_size = 1
         self.observation_spec = Composite(
-            observation=Composite(data=Unbounded(shape=(15, self.num_features), dtype=torch.float32),
+            observation=Composite(data=Unbounded(shape=(self.step_size, self.num_features), dtype=torch.float32),
                                   budget=Unbounded(shape=torch.Size([1]), dtype=torch.float32)))
         self.reward_spec = Composite(
             reward=Unbounded(shape=torch.Size([1]), dtype=torch.float64)
@@ -50,14 +50,14 @@ class AdOptimizationEnv(EnvBase):
         next_state = torch.tensor(next_sample[self.feature_columns].values, dtype=torch.float32)
         reward = self._compute_reward(action, next_sample[-1:])
         done = budget < 0
-        return TensorDict(
-            {"observation": TensorDict({"data": next_state, "budget": torch.tensor([budget])}),
-             "reward": torch.tensor([np.float64(reward)]),
-             "done": torch.tensor(done)},
-            batch_size=[])
+        return TensorDict({
+            "observation": TensorDict({"data": next_state, "budget": torch.tensor([budget])}),
+            "reward": torch.tensor([np.float64(reward)]),
+            "done": torch.tensor(done)
+        }, batch_size=[])
 
     def _next_slice(self):
-        next_step = self.steps + 15
+        next_step = self.steps + self.step_size
         next_sample = self.dataset[self.steps:next_step]
         self.steps = self.steps + 1
         return next_sample, next_step

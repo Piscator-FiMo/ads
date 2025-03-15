@@ -33,7 +33,8 @@ class AttachZeroDimTensor(Transform):
         return concated
 
     def transform_observation_spec(self, observation_spec: TensorSpec) -> TensorSpec:
-        return Composite(observation=Unbounded(shape=(15, 13), dtype=torch.float32))
+        # todo make this dependent on observation_spec
+        return Composite(observation=Unbounded(shape=(1, 13), dtype=torch.float32))
 
     def _inv_apply_transform(self, state: torch.Tensor) -> torch.Tensor:
         data, budget = state.split([12,1], dim=1)
