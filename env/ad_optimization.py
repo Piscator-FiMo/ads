@@ -11,10 +11,6 @@ from torchrl.data.tensor_specs import Box, ContinuousBox, Unbounded, UnboundedCo
 from torchrl.envs import EnvBase, make_composite_from_td
 
 
-# Todo add a budget
-# todo env specs
-# make it win and loose money by its decisions
-# done if no more budget
 feature_columns = ["competitiveness", "difficulty_score", "organic_rank", "organic_clicks", "organic_ctr", "paid_clicks", "paid_ctr", "ad_spend", "ad_conversions", "ad_roas", "conversion_rate", "cost_per_click"]
 
 # Define a Custom TorchRL Environment
@@ -27,16 +23,10 @@ class AdOptimizationEnv(EnvBase):
 
         self.feature_columns = feature_columns
         self.dataset = dataset
-        self.num_features = len(feature_columns)
+        self.num_features = len(feature_columns) + 1 #+1 for budget
         self.steps = 0
         self.initial_budget = initial_budget
 
-
-        # ✅ Fix: Define action, observation, and reward specs correctly
-        # diese drei Parameter müssen genau so definiert werden, ansonsten werden sie von TorchRL ohne Fehlermeldung gelöscht
-        # OneHot(n=2) = Ja, Nein
-        # Observation = Zeilenvektor
-        # Reward = nur eine Zahl
         self.action_spec = Composite(action=OneHot(n=2, dtype=torch.int64))
         self.observation_spec = Composite(observation=Unbounded(shape=(self.num_features,), dtype=torch.float32))
         self.reward_spec = Composite(reward=Unbounded(shape=(1,), dtype=torch.float32))  # ✅ Corrected
@@ -49,7 +39,8 @@ class AdOptimizationEnv(EnvBase):
         sample = self.dataset.iloc[0]
         self.steps = 0
         self.budget = self.initial_budget
-        state = torch.tensor(sample[feature_columns].values.astype(np.float32), dtype=torch.float32)
+
+        state = torch.cat((torch.tensor(sample[feature_columns].values.astype(np.float32), dtype=torch.float32), torch.tensor([self.budget], dtype=torch.float32)))
         return TensorDict({
             "observation": state,
             #"budget": self.budget,
@@ -64,34 +55,24 @@ class AdOptimizationEnv(EnvBase):
 
         self.steps = self.steps + 1
 
+        if self.budget <= 0:
+            action = 0 # when there is no more money, we can't buy ads
+
         if action == 1:
-            #budget -=  (next_sample[-1:]["ad_spend"].item() - next_sample[-1:]["ad_conversions"].item())
-            self.budget -= (next_sample["ad_spend"].item() - next_sample["ad_conversions"].item())
-        next_state = torch.tensor(
-            #next_sample[-1:][feature_columns].values.astype(np.float32),
+            self.budget -= (next_sample["ad_spend"].item() - next_sample["ad_conversions"].item()) #todo klären macht das sinn?
+        next_state = torch.cat((torch.tensor(
             next_sample[feature_columns].values.astype(np.float32),
             dtype=torch.float32
-        )
+        ), torch.tensor([self.budget], dtype=torch.float32)))
 
-        #reward_value = self._compute_reward(action, next_sample[-1:])
         reward_value = self._compute_reward(action, next_sample)
         reward = torch.tensor([reward_value], dtype=torch.float32)  # Shape [1], #reward und reward_spec müssen das gleiche Shape haben!
 
-        done = self.budget < 0
-        #done = torch.tensor([False], dtype=torch.bool)  # Shape [1]
+        done = next_step >= 365 #assumption we want to spend the budget over a year
 
-        # print("observation:", next_state)
-        # print("budget:", budget)
-        # print("reward_value:", reward)
-        # print("done:", done)
-        # print("selected action:", action)
-
-
-        # ✅ Fix: Ensure the correct structure
-        # hier darf kein nested TensorDict sein, dies wird von TorchRL selbst erstellt!
         return TensorDict({
           "observation": next_state,
-       #   "budget": torch.tensor(budget, dtype=torch.float32),
+       #   "budget": torch.tensor(budget, dtype=torch.float32), removed the entries that are not wanted by check_env_spec function
           "reward": torch.tensor([reward], dtype=torch.float32),
           "done": torch.tensor([done], dtype=torch.bool),
       #    "action": action
@@ -103,20 +84,7 @@ class AdOptimizationEnv(EnvBase):
         return self.compute_reward_of_row(action, sample["ad_roas"], sample["ad_spend"])
 
     def compute_reward_of_row(self, action: int, ad_roas: float, ad_spent: float) -> float:
-        reward = 1 / (1 + exp(-ad_roas))
-        if action == 1 and ad_roas > 5000:
-            # reward a very good action a lot
-            reward = ad_roas
-        elif action == 1 and ad_roas < 1:
-            # if the conversion value < ad spent penalise
-            reward = -ad_spent * reward
-        elif action == 0 and ad_roas < 1:
-            # reward proportionally to saved money
-            reward = reward
-        elif action == 0 and ad_roas > 1:
-            # if not bought but would be profitable penalise
-            reward = -reward
-        return reward
+        return ad_roas if action == 1 else -ad_roas
 
     def _set_seed(self, seed: Optional[int]):
         rng = torch.manual_seed(seed)

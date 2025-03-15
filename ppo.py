@@ -2,15 +2,11 @@ from collections import defaultdict
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.random as rand
 import pandas as pd
 import torch
-import numpy.random as rand
-
-from torchrl.modules import ProbabilisticActor, OneHotCategorical, ValueOperator
 from tensordict.nn import TensorDictModule
-from tensordict.nn.distributions import NormalParamExtractor
 from torch import nn
-
 from torchrl.collectors import SyncDataCollector
 from torchrl.data.replay_buffers import ReplayBuffer
 from torchrl.data.replay_buffers.samplers import SamplerWithoutReplacement
@@ -22,12 +18,16 @@ from torchrl.envs import (
     StepCounter,
     TransformedEnv, ParallelEnv,
 )
-from torchrl.envs.libs.gym import GymEnv
 from torchrl.envs.utils import check_env_specs, ExplorationType, set_exploration_type
-from torchrl.modules import ProbabilisticActor, TanhNormal, ValueOperator
+from torchrl.modules import OneHotCategorical
+from torchrl.modules import ProbabilisticActor, ValueOperator
 from torchrl.objectives import ClipPPOLoss
 from torchrl.objectives.value import GAE
 from tqdm import tqdm
+from env.ad_optimization import AdOptimizationEnv
+from sklearn.preprocessing import StandardScaler
+
+
 # Generate Realistic Synthetic Data
 def add_generated_synthetic_data(preprocessed_data: pd.DataFrame, seed: int | None = None) -> pd.DataFrame:
     df: pd.DataFrame = preprocessed_data.copy()
@@ -81,23 +81,23 @@ def add_generated_synthetic_data(preprocessed_data: pd.DataFrame, seed: int | No
     # Set the timestamp as the index
     df = df.set_index("timestamp", drop=False)
 
-    # Print some information about the dataset
-    print(df.head())
-    df.info()
-    print(df["ad_roas"].describe(include="all"))
-    #plt.hist(df["ad_roas"])
-    #plt.show()
+
     return df
 
 
 def load_data() -> pd.DataFrame:
     return pd.read_csv("data/preprocessed.csv")
 
-from env.ad_optimization import AdOptimizationEnv
 VERBOSE = False
 
 
 def create_env():
+    dataset = add_generated_synthetic_data(preprocessed_data=preprocessed_data, seed=42)
+    dataset = dataset[dataset["keyword"] == "iPhone"]
+    scaler = StandardScaler()
+    dataset['ad_roas'] = scaler.fit_transform(dataset[['ad_roas']])
+
+    print(dataset.describe())
     base_env = AdOptimizationEnv(dataset, initial_budget=1_000_000)
     transformed_env = TransformedEnv(
         base_env,
@@ -114,8 +114,8 @@ def create_env():
 
 if __name__ == "__main__":
     # Load synthetic dataset
-    dataset = add_generated_synthetic_data(preprocessed_data=load_data(), seed=42)
-    dataset = dataset[dataset["keyword"] == "iPhone"]
+    preprocessed_data = load_data()
+
 
     feature_columns = ["competitiveness", "difficulty_score", "organic_rank", "organic_clicks", "organic_ctr",
                        "paid_clicks", "paid_ctr", "ad_spend", "ad_conversions", "ad_roas", "conversion_rate",
@@ -130,10 +130,9 @@ if __name__ == "__main__":
     lr = 3e-4
     max_grad_norm = 1.0
 
-    frames_per_batch = 1000
+    frames_per_batch = 10000
     # For a complete training, bring the number of frames up to 1M
-    total_frames = 100_000
-
+    total_frames = 1_000_000
     sub_batch_size = 64  # cardinality of the sub-samples gathered from the current data in the inner loop
     num_epochs = 10  # optimization steps per batch of data collected
     clip_epsilon = (
@@ -155,8 +154,9 @@ if __name__ == "__main__":
 
     check_env_specs(env)
 
+    in_features = 13
     actor_net = nn.Sequential(
-        nn.Linear(in_features=12, out_features=num_cells, device=device),
+        nn.Linear(in_features=in_features, out_features=num_cells, device=device),
         nn.Tanh(),
         nn.Linear(in_features=num_cells, out_features=num_cells, device=device),
         nn.Tanh(),
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     )
 
     value_net = nn.Sequential(
-        nn.Linear(in_features=12, out_features=num_cells, device=device),
+        nn.Linear(in_features=in_features, out_features=num_cells, device=device),
         nn.Tanh(),
         nn.Linear(in_features=num_cells, out_features=num_cells, device=device),
         nn.Tanh(),
