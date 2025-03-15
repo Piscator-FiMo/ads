@@ -1,27 +1,17 @@
 #!pip install torch==2.5.0 torchrl
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import numpy as np
-import numpy.random as rand
-import random
-import pandas as pd
 import time
 
-from typing import Optional
-
-from tensordict import TensorDict, TensorDictBase
+import numpy as np
+import numpy.random as rand
+import pandas as pd
 from tensordict.nn import TensorDictModule, TensorDictSequential
-from torchrl.envs import EnvBase, TransformedEnv, StepCounter, check_env_specs
-from torchrl.objectives import DQNLoss, SoftUpdate
-from torchrl.collectors import SyncDataCollector
-from torchrl.modules import EGreedyModule, MLP, QValueModule
-from torchrl.data import OneHot, DiscreteTensorSpec, LazyTensorStorage, ReplayBuffer
-from torchrl.data.replay_buffers import TensorDictReplayBuffer
 from torch.optim import Adam
-
-import matplotlib.pyplot as plt
+from torchrl.collectors import SyncDataCollector
+from torchrl.data import LazyTensorStorage, ReplayBuffer
+from torchrl.envs import TransformedEnv, StepCounter, check_env_specs
+from torchrl.modules import EGreedyModule, MLP, QValueModule
+from torchrl.objectives import DQNLoss, SoftUpdate
 
 from env.ad_optimization import AdOptimizationEnv
 from env.transforms import AttachZeroDimTensor
@@ -125,18 +115,12 @@ feature_columns = ["competitiveness", "difficulty_score", "organic_rank", "organ
 
 if __name__ == "__main__":
     # Initialize Environment
-    env = AdOptimizationEnv(dataset, feature_columns, 1000000)
-    env = TransformedEnv(env, StepCounter())
+    env = AdOptimizationEnv(dataset, feature_columns, 1000000.0)
     env = TransformedEnv(env, AttachZeroDimTensor(in_keys=["observation"], out_keys=["observation"],
+                                                  in_keys_inv=["observation"], out_keys_inv=["observation"],
                                                   attach_keys=["data", "budget"]))
-    state_dim = env.num_features
-    action_dim = env.action_spec.n
-    print(env.observation_spec)
+    env = TransformedEnv(env, StepCounter())
     check_env_specs(env)
-    # td = env.reset()
-    # print(td)
-    # td = env.rand_step(td)
-    # print(td)
 
     value_mlp = MLP(in_features=env.num_features + 1, out_features=env.action_spec.shape[-1], num_cells=[64, 64])
     value_net = TensorDictModule(value_mlp, in_keys=["observation"], out_keys=["action_value"])
@@ -185,8 +169,6 @@ if __name__ == "__main__":
                     print(f"Max num steps: {max_length}, rb length {len(rb)}")
                 total_count += data.numel()
                 total_episodes += data["next", "done"].sum()
-        if max_length > 200:
-            break
 
     t1 = time.time()
 
