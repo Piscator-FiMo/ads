@@ -92,7 +92,7 @@ VERBOSE = False
 
 
 def create_env():
-    dataset = add_generated_synthetic_data(preprocessed_data=preprocessed_data, seed=42)
+    dataset = add_generated_synthetic_data(preprocessed_data=preprocessed_data)
     dataset = dataset[dataset["keyword"] == "iPhone"]
     scaler = StandardScaler()
     dataset['ad_roas'] = scaler.fit_transform(dataset[['ad_roas']])

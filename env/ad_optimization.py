@@ -84,7 +84,7 @@ class AdOptimizationEnv(EnvBase):
         return self.compute_reward_of_row(action, sample["ad_roas"], sample["ad_spend"])
 
     def compute_reward_of_row(self, action: int, ad_roas: float, ad_spent: float) -> float:
-        return ad_roas if action == 1 else -ad_roas
+        return ad_roas if action == 1 else 0
 
     def _set_seed(self, seed: Optional[int]):
         rng = torch.manual_seed(seed)
