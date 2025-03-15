@@ -20,7 +20,7 @@ from torchrl.envs import (
     DoubleToFloat,
     ObservationNorm,
     StepCounter,
-    TransformedEnv,
+    TransformedEnv, ParallelEnv,
 )
 from torchrl.envs.libs.gym import GymEnv
 from torchrl.envs.utils import check_env_specs, ExplorationType, set_exploration_type
@@ -95,6 +95,23 @@ def load_data() -> pd.DataFrame:
 
 from env.ad_optimization import AdOptimizationEnv
 VERBOSE = False
+
+
+def create_env():
+    base_env = AdOptimizationEnv(dataset, initial_budget=1_000_000)
+    transformed_env = TransformedEnv(
+        base_env,
+        Compose(
+            # normalize observations
+            ObservationNorm(in_keys=["observation"]),
+            DoubleToFloat(),
+            StepCounter(),
+        ),
+    )
+    transformed_env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0)
+    return transformed_env
+
+
 if __name__ == "__main__":
     # Load synthetic dataset
     dataset = add_generated_synthetic_data(preprocessed_data=load_data(), seed=42)
@@ -115,7 +132,7 @@ if __name__ == "__main__":
 
     frames_per_batch = 1000
     # For a complete training, bring the number of frames up to 1M
-    total_frames = 10_000
+    total_frames = 100_000
 
     sub_batch_size = 64  # cardinality of the sub-samples gathered from the current data in the inner loop
     num_epochs = 10  # optimization steps per batch of data collected
@@ -126,17 +143,9 @@ if __name__ == "__main__":
     lmbda = 0.95
     entropy_eps = 1e-4
 
-    base_env = AdOptimizationEnv(dataset, initial_budget=1_000_000)
-    env = TransformedEnv(
-        base_env,
-        Compose(
-            # normalize observations
-            ObservationNorm(in_keys=["observation"]),
-            DoubleToFloat(),
-            StepCounter(),
-        ),
-    )
-    env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0)
+    create_env()
+
+    env = ParallelEnv(num_workers=10, create_env_fn=create_env)
     if VERBOSE:
         print("normalization constant shape:", env.transform[0].loc.shape)
         print("observation_spec:", env.observation_spec)
@@ -282,3 +291,17 @@ if __name__ == "__main__":
         # We're also using a learning rate scheduler. Like the gradient clipping,
         # this is a nice-to-have but nothing necessary for PPO to work.
         scheduler.step()
+    plt.figure(figsize=(10, 10))
+    plt.subplot(2, 2, 1)
+    plt.plot(logs["reward"])
+    plt.title("training rewards (average)")
+    plt.subplot(2, 2, 2)
+    plt.plot(logs["step_count"])
+    plt.title("Max step count (training)")
+    plt.subplot(2, 2, 3)
+    plt.plot(logs["eval reward (sum)"])
+    plt.title("Return (test)")
+    plt.subplot(2, 2, 4)
+    plt.plot(logs["eval step_count"])
+    plt.title("Max step count (test)")
+    plt.show()
