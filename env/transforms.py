@@ -3,7 +3,7 @@ from typing import Sequence
 import torch
 from tensordict import NestedKey, TensorDict
 from torch import Tensor
-from torchrl.data import TensorSpec
+from torchrl.data import TensorSpec, Unbounded
 from torchrl.envs import Transform
 
 
@@ -27,7 +27,7 @@ class AttachZeroDimTensor(Transform):
         return concated
 
     def transform_observation_spec(self, observation_spec: TensorSpec) -> TensorSpec:
-        return
+        return Unbounded(shape=(15,13), dtype=torch.float32)
 
     def _inv_apply_transform(self, state: torch.Tensor) -> torch.Tensor:
 

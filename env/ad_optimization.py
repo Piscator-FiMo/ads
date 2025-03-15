@@ -4,7 +4,7 @@ from typing import Optional
 import pandas as pd
 import torch
 from tensordict import TensorDict, TensorDictBase
-from torchrl.data import OneHot
+from torchrl.data import OneHot, Composite, Unbounded
 from torchrl.envs import EnvBase
 
 
