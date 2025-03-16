@@ -55,9 +55,6 @@ class AdOptimizationEnv(EnvBase):
 
         self.steps = self.steps + 1
 
-        if self.budget <= 0:
-            action = 0 # when there is no more money, we can't buy ads
-
         if action == 1:
             self.budget -= (next_sample["ad_spend"].item() - next_sample["ad_conversions"].item()) #todo klären macht das sinn?
         next_state = torch.cat((torch.tensor(
@@ -68,7 +65,7 @@ class AdOptimizationEnv(EnvBase):
         reward_value = self._compute_reward(action, next_sample)
         reward = torch.tensor([reward_value], dtype=torch.float32)  # Shape [1], #reward und reward_spec müssen das gleiche Shape haben!
 
-        done = next_step >= 365 #assumption we want to spend the budget over a year
+        done = self.budget <= 0 #assumption we want to spend the budget over a year
 
         return TensorDict({
           "observation": next_state,

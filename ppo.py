@@ -97,7 +97,6 @@ def create_env():
     scaler = StandardScaler()
     dataset['ad_roas'] = scaler.fit_transform(dataset[['ad_roas']])
 
-    print(dataset.describe())
     base_env = AdOptimizationEnv(dataset, initial_budget=1_000_000)
     transformed_env = TransformedEnv(
         base_env,
