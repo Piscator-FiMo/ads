@@ -285,7 +285,15 @@ if __name__ == "__main__":
                     f"(init: {logs['eval reward (sum)'][0]: 4.4f}), "
                     f"eval step-count: {logs['eval step_count'][-1]}"
                 )
+
+                steps = range(len(eval_rollout["observation"][0]))
+                for observation in eval_rollout["observation"]:
+                    plt.plot(steps, [features[-1] for features in observation])
+
+                plt.savefig(f"budget_history_{i}.png")
+                plt.clf()
                 del eval_rollout
+
         pbar.set_description(", ".join([eval_str, cum_reward_str, stepcount_str, lr_str]))
 
         # We're also using a learning rate scheduler. Like the gradient clipping,
