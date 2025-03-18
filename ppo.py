@@ -287,9 +287,12 @@ if __name__ == "__main__":
                 )
 
                 steps = range(len(eval_rollout["observation"][0]))
-                for observation in eval_rollout["observation"]:
-                    plt.plot(steps, [features[-1] for features in observation])
+                for idx, observation in enumerate(eval_rollout["observation"]):
+                    budget = [features[-1] for features in observation]
+                    plt.plot(steps, budget, label=f"Env {idx}")
 
+                plt.legend()
+                plt.title(f"Budget history {i}")
                 plt.savefig(f"budget_history_{i}.png")
                 plt.clf()
                 del eval_rollout
