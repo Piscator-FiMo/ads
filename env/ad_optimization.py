@@ -55,28 +55,37 @@ class AdOptimizationEnv(EnvBase):
 
         self.steps = self.steps + 1
 
-        if self.budget <= 0:
-            action = 0 # when there is no more money, we can't buy ads
+        next_cost = next_sample["ad_spend"].item()
+
+        if self.budget <= next_cost:
+            action = 0  # when there is no more money, we can't buy ads
 
         if action == 1:
-            self.budget -= (next_sample["ad_spend"].item() - next_sample["ad_conversions"].item()) #todo klären macht das sinn?
-        next_state = torch.cat((torch.tensor(
-            next_sample[feature_columns].values.astype(np.float32),
-            dtype=torch.float32
-        ), torch.tensor([self.budget], dtype=torch.float32)))
+            self.budget -= next_cost - (next_sample["ad_conversions"].item() * 0.1)  # todo klären macht das sinn?
+
+        next_state = torch.cat(
+            (
+                torch.tensor(next_sample[feature_columns].values.astype(np.float32), dtype=torch.float32),
+                torch.tensor([self.budget], dtype=torch.float32),
+            )
+        )
 
         reward_value = self._compute_reward(action, next_sample)
-        reward = torch.tensor([reward_value], dtype=torch.float32)  # Shape [1], #reward und reward_spec müssen das gleiche Shape haben!
+        reward = torch.tensor(
+            [reward_value], dtype=torch.float32
+        )  # Shape [1], #reward und reward_spec müssen das gleiche Shape haben!
 
-        done = next_step >= 365 #assumption we want to spend the budget over a year
+        done = next_step >= 365  # assumption we want to spend the budget over a year
 
-        return TensorDict({
-          "observation": next_state,
-       #   "budget": torch.tensor(budget, dtype=torch.float32), removed the entries that are not wanted by check_env_spec function
-          "reward": torch.tensor([reward], dtype=torch.float32),
-          "done": torch.tensor([done], dtype=torch.bool),
-      #    "action": action
-        })  # ✅ Ensure batch size is correctly set
+        return TensorDict(
+            {
+                "observation": next_state,
+                # "budget": torch.tensor(self.budget, dtype=torch.float32),
+                "reward": torch.tensor([reward], dtype=torch.float32),
+                "done": torch.tensor([done], dtype=torch.bool),
+                #    "action": action
+            }
+        )  # ✅ Ensure batch size is correctly set
 
     def _compute_reward(self, action, sample) -> float:
         # reward prop zu roc
